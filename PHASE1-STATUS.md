@@ -64,8 +64,10 @@ native engine is stubbed pending Phase 2.
 - Distribution: `ENGINE_DIST_BASE` = `…/releases/latest/download/` (CDN, NOT the
   GitHub API — dodges the 60/hr rate limit; no token in the public launcher).
   Override via `RS3B_ENGINE_DIST_BASE` (mirror/proxy if the api repo goes private).
-- rs3buddy-api: `scripts/build-engine-release.mjs` + `.github/workflows/engine-release.yml`
-  publish `engine.zip` + `version.json` on tag `engine-vX.Y.Z` (tag and version.json aligned).
+- rs3buddy-api: `npm run release:engine <version>` (`scripts/release-engine.mjs`)
+  builds + publishes `engine.zip` + `version.json` as Release `engine-vX.Y.Z` to the
+  public `Techpure2013/rs3buddy-engine` repo via local `gh` auth (tag and version.json
+  aligned; no CI / token). See `rs3buddy-api/RELEASING.md`.
 - VERIFIED: 23/23 vitest pass; build clean; offline boot → graceful
   `[Main] Engine update check: ECONNREFUSED`, launcher boots fine, no crash.
 - Not yet proven E2E: real auto-update needs a published engine release (mocked + offline paths tested).
