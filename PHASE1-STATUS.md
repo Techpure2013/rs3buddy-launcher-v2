@@ -30,8 +30,27 @@ native engine is stubbed pending Phase 2.
   - STDERR "Native addon or library not found" is the expected graceful message
     (informational, not a crash).
 
-## Next: Phase 2 — preload → rs3buddy-api bridge
+## Phase 2 Slice 1 — Toggle-gated engine injection (child process): COMPLETE
+- rs3buddy-api: `sdk-host` bundled to a standalone engine process (webpack `sdk-host`
+  entry → `rundir/js/sdk-host.bundle.js`). Runs under plain node; connects to RS3 +
+  serves the HTTP API.
+- Launcher engine module (`launcher/src/engine/`):
+  - `engine-decision.ts` — pure toggle truth table (6 vitest cases).
+  - `engine-controller.ts` — child-process lifecycle: spawn → wait for "SDK server
+    live" stdout → active; early-exit/timeout → kill + detached+error (5 vitest cases).
+  - `index.ts` — production singleton; spawns `node sdk-host.bundle.js` with
+    RS3B_SDK_PORT (sibling rs3buddy-api checkout; override via RS3B_ENGINE_BUNDLE).
+- Wired to the EXISTING autoInject toggle:
+  - `main.ts` `injection-settings-changed` → enable/disableEngine.
+  - `game.ts` game-detect (while toggle on) → enableEngine; `main.ts` game-stop → disableEngine.
+- "Off means off" VERIFIED: boot with toggle default-off → no `[Engine] spawning`/
+  `[Engine] live`; no engine child process. Tests: vitest `src/engine` 11/11 pass.
+- Note: old inject path (`injectIntoProcess`/`reconnectToOverlay`) left in place
+  (Phase 1 stub = no-op); its removal belongs to a later slice once the full API map lands.
+
+## Next: Phase 2 remaining — preload → rs3buddy-api bridge
 Replace the stub with a real bridge mapping the `NativeAddon` surface
 (`recordRenderCalls`, `beginOverlay`, `getRsReady/Width/Height`, `debug.*`, etc.)
-to rs3buddy-api's server/IPC. The `NativeAddon` interface in `launcher/src/inject.ts`
-and `packages/alt1-launcher-api/src/types/native.ts` are the contract.
+to rs3buddy-api's server/IPC so app windows use the engine. The `NativeAddon`
+interface in `launcher/src/inject.ts` and `packages/alt1-launcher-api/src/types/native.ts`
+are the contract. Also: package the engine bundle for shipping; multi-client engine instances.
