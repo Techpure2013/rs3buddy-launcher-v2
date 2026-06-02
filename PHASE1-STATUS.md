@@ -48,9 +48,30 @@ native engine is stubbed pending Phase 2.
 - Note: old inject path (`injectIntoProcess`/`reconnectToOverlay`) left in place
   (Phase 1 stub = no-op); its removal belongs to a later slice once the full API map lands.
 
-## Next: Phase 2 remaining — preload → rs3buddy-api bridge
-Replace the stub with a real bridge mapping the `NativeAddon` surface
-(`recordRenderCalls`, `beginOverlay`, `getRsReady/Width/Height`, `debug.*`, etc.)
-to rs3buddy-api's server/IPC so app windows use the engine. The `NativeAddon`
-interface in `launcher/src/inject.ts` and `packages/alt1-launcher-api/src/types/native.ts`
-are the contract. Also: package the engine bundle for shipping; multi-client engine instances.
+## Phase 2 Slice 2 — Runtime engine auto-update: COMPLETE
+- Engine ships independently of the launcher; users auto-get the latest versioned
+  native at startup. No file copying, no launcher reinstall.
+- Launcher engine module additions:
+  - `engine-version.ts` — pure isNewer / parseVersionJson / assetUrl (7 tests).
+  - `engine-download.ts` — redirect-following fetchText + downloadFile(progress).
+  - `engine-updater.ts` — check `version.json` → download `engine.zip` → extract →
+    verify bundle → atomically swap `<userData>/engine/current` (5 tests; offline-safe).
+  - `index.ts` — `engineUpdater` singleton; `engineBundlePath()` now resolves the
+    cached `<userData>/engine/current/sdk-host.bundle.js` (RS3B_ENGINE_BUNDLE still overrides).
+  - `main.ts` — non-blocking `engineUpdater.checkAndUpdate()` at startup.
+  - renderer banner (`renderer.ts` + `styles.css` + preload `onEngineUpdateProgress`):
+    bottom progress bar while downloading; auto-dismiss; no banner if up to date.
+- Distribution: `ENGINE_DIST_BASE` = `…/releases/latest/download/` (CDN, NOT the
+  GitHub API — dodges the 60/hr rate limit; no token in the public launcher).
+  Override via `RS3B_ENGINE_DIST_BASE` (mirror/proxy if the api repo goes private).
+- rs3buddy-api: `scripts/build-engine-release.mjs` + `.github/workflows/engine-release.yml`
+  publish `engine.zip` + `version.json` on tag `engine-vX.Y.Z` (tag and version.json aligned).
+- VERIFIED: 23/23 vitest pass; build clean; offline boot → graceful
+  `[Main] Engine update check: ECONNREFUSED`, launcher boots fine, no crash.
+- Not yet proven E2E: real auto-update needs a published engine release (mocked + offline paths tested).
+
+## Next: Phase 2 remaining — preload → rs3buddy-api app bridge
+New HTTP-based apps consume the engine's API (the patchrs apps were dropped). When
+apps need engine data, they call the rs3buddy-api HTTP server (the typed clients).
+Also remaining: finishing the native occlusion/player-tracking engine itself;
+overlay reconciliation (Phase 3); multi-client engine instances.
