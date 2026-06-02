@@ -25,7 +25,10 @@ const ENGINE_PORT = 4400;
  */
 const ENGINE_DIST_BASE =
   process.env.RS3B_ENGINE_DIST_BASE ??
-  "https://github.com/Techpure2013/rs3buddy-api/releases/latest/download/";
+  // Public engine distribution channel. The source repo (rs3buddy-api) is PRIVATE,
+  // so the built engine is published to this separate PUBLIC repo — no token needed
+  // in the launcher. (Override via RS3B_ENGINE_DIST_BASE: mirror/proxy/etc.)
+  "https://github.com/Techpure2013/rs3buddy-engine/releases/latest/download/";
 
 /** Cache root for the auto-updated engine: <userData>/engine. */
 function engineCacheDir(): string {
@@ -75,8 +78,15 @@ export const engineController: EngineController = createEngineController({
   port: ENGINE_PORT,
   spawnEngine: (gamePid: number, port: number): EngineChild => {
     const bundle = engineBundlePath();
-    console.log(`[Engine] spawning ${bundle} (game pid ${gamePid}, port ${port})`);
+    // CWD MUST be the bundle's own directory: the engine's native loader resolves
+    // rs3buddy.node via the CWD-relative "./build/Release/" path, so the engine
+    // artifact ships its native under <bundleDir>/build/Release/ and we run from
+    // <bundleDir>. (Without this cwd the loader searches the launcher's dir and
+    // fails with "No native build found".)
+    const bundleDir = path.dirname(bundle);
+    console.log(`[Engine] spawning ${bundle} (cwd ${bundleDir}, game pid ${gamePid}, port ${port})`);
     const child = spawn(process.execPath, [bundle], {
+      cwd: bundleDir,
       env: {
         ...process.env,
         RS3B_SDK_PORT: String(port),
