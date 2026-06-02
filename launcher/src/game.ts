@@ -6,6 +6,7 @@ import { getConfig, getSessions } from './config';
 import { refreshTokensIfNeeded, decodeJwtPayload } from './auth';
 import { downloadRS3Client, getCachedGamePath } from './download';
 import { injectIntoProcess, isInjected as checkInjected, loadNativeAddon, resetInjectionState, resetInjectionStateForPid, reconnectToOverlay } from './inject';
+import { engineController } from './engine';
 import { isCharacterPlaying } from './tray';
 import type { Result, GameEnv, LaunchOptions } from './types';
 
@@ -277,6 +278,12 @@ export function startProcessMonitor(): void {
           console.log('[Game] Shared memory reconnect result:', reconnected);
           onInjectionComplete?.(reconnected, pid);
         } else if (autoInjectEnabled && !injectedPids.has(pid)) {
+          // rs3buddy-api engine: start the engine process on detect while the
+          // toggle is on (idempotent — repeated detects don't re-spawn).
+          void engineController.enableEngine(pid).then((s) => {
+            if (s.error) console.warn('[Game] Engine attach error:', s.error);
+          });
+
           // Check if DLLs are already loaded from a previous session
           // This prevents the boost shared_ptr assertion crash from re-injection
           if (isDllLoadedInProcess(pid)) {

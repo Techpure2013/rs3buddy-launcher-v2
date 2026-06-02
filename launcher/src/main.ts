@@ -405,6 +405,8 @@ function initialize(): void {
       }
 
       currentGamePid = 0;
+      // Game gone -> stop the engine process (single-client scope for this slice).
+      void engineController.disableEngine();
       sendToMainWindow('rs2client-stopped', { pid });
       if (clientId !== undefined) {
         sendToMainWindow('client-disconnected', { clientId, pid });
