@@ -29,7 +29,7 @@ var BUILD_TYPE;
 var init_build_config = __esm({
   "src/build-config.ts"() {
     "use strict";
-    BUILD_TYPE = "beta";
+    BUILD_TYPE = "dev";
   }
 });
 

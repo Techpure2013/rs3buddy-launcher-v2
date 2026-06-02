@@ -5,6 +5,13 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
@@ -21,6 +28,124 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/native-stub.ts
+var native_stub_exports = {};
+__export(native_stub_exports, {
+  createNativeStub: () => createNativeStub
+});
+function makeDebugStub() {
+  const overrides = {
+    getCurrentWorkingDirectory: () => process.cwd(),
+    readDirSync: () => [],
+    readFileSync: () => new Uint8Array(0),
+    copyFileSync: () => void 0,
+    statSync: () => ({ size: 0, modifiedTime: 0, isDirectory: false }),
+    getExePids: () => [],
+    injectDll: () => {
+      log("debug.injectDll (stub)");
+      return { ok: false };
+    },
+    connectToOverlay: () => {
+      log("debug.connectToOverlay (stub)");
+      return { ok: false };
+    },
+    exitDll: () => log("debug.exitDll (stub)"),
+    getRsHwnd: () => 0,
+    memoryState: () => null,
+    getAllGlObjects: () => ({}),
+    getGlObjectStats: () => null,
+    getSharedMemorySizes: () => [],
+    resetOpenGlState: async () => void 0,
+    killMemorySession: async () => void 0,
+    setLogCb: (_cb) => log("debug.setLogCb (stub)")
+  };
+  return makeProxy("debug", overrides);
+}
+function makeProxy(label, overrides) {
+  return new Proxy(overrides, {
+    get(target, prop) {
+      if (prop in target)
+        return target[prop];
+      return (..._args) => {
+        log(`${label}.${String(prop)} (stub no-op)`);
+        return void 0;
+      };
+    }
+  });
+}
+function createNativeStub() {
+  const overrides = {
+    __stub: true,
+    // Alt1 replacement API — return-shape matters (numbers read directly).
+    getRsReady: () => 0,
+    getRsX: () => 0,
+    getRsY: () => 0,
+    getRsWidth: () => 0,
+    getRsHeight: () => 0,
+    getRsHwnd: () => 0,
+    capture: async () => {
+      throw new Error("[native-stub] capture: engine not wired (Phase 1)");
+    },
+    // Core OpenGL — callers iterate/await these.
+    recordRenderCalls: async () => [],
+    streamRenderCalls: () => {
+      log("streamRenderCalls (stub) \u2014 returns inert stream object");
+      return { stop: () => void 0, dispose: () => void 0 };
+    },
+    getOpenGlState: async () => ({}),
+    getRenderer: () => null,
+    // GL logging/debugging.
+    setGlLogCb: (_cb) => log("setGlLogCb (stub)"),
+    getGlLogToggles: () => new Uint8Array(0),
+    setGlLogToggles: (_arr) => log("setGlLogToggles (stub)"),
+    // Upload/overlay — return inert handles.
+    createProgram: () => {
+      log("createProgram (stub)");
+      return {};
+    },
+    createVertexArray: () => {
+      log("createVertexArray (stub)");
+      return {};
+    },
+    createTexture: () => {
+      log("createTexture (stub)");
+      return {};
+    },
+    beginOverlay: () => {
+      log("beginOverlay (stub)");
+      return { stop: () => void 0, getUniformState: () => new Uint8Array(0) };
+    },
+    // Debug API (required sub-object).
+    debug: makeDebugStub(),
+    // Optional overlay extension.
+    overlay: {
+      init: () => false,
+      shutdown: () => void 0,
+      setConfig: () => void 0,
+      addButton: () => false,
+      removeButton: () => false,
+      clearButtons: () => void 0,
+      setTheme: () => void 0,
+      setClickCallback: () => void 0,
+      getMousePosition: () => ({ x: 0, y: 0 })
+    }
+  };
+  return makeProxy("native", overrides);
+}
+var log;
+var init_native_stub = __esm({
+  "src/native-stub.ts"() {
+    "use strict";
+    log = (m) => {
+      try {
+        console.log("[native-stub] " + m);
+      } catch {
+      }
+    };
+  }
+});
 
 // src/app-window/preload.ts
 var import_electron = require("electron");
@@ -128,6 +253,12 @@ function getNativeAddonPath() {
 var nativeAddon = null;
 var addonPath = null;
 var addonLoadError = null;
+try {
+  const { createNativeStub: createNativeStub2 } = (init_native_stub(), __toCommonJS(native_stub_exports));
+  nativeAddon = createNativeStub2();
+} catch (e) {
+  debug("could not load native stub (continuing with null): " + e);
+}
 try {
   addonPath = getNativeAddonPath();
   debug("Platform: " + process.platform);

@@ -12,6 +12,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getApp } from './electron';
 import { reconnectToOverlayPure } from './inject-logic';
+import { createNativeStub } from './native-stub';
 export type { InjectionState } from './inject-logic';
 
 // Click event data from injected DLL
@@ -440,6 +441,15 @@ export function loadNativeAddon(): NativeAddon | null {
     return nativeAddon;
   }
 
+  // ── Phase 1 (rs3buddy-launcher-v2): native engine not wired yet. ──
+  // The old patchrs addon.node has been stripped from this repo; rs3buddy-api is
+  // grafted in Phase 2. Return a stub implementing the full NativeAddon interface
+  // so the shell boots and app windows load without an engine.
+  console.log('[Inject] Phase 1 stub active — native engine not wired yet.');
+  nativeAddon = createNativeStub();
+  return nativeAddon;
+
+  /* ── PHASE 2: real addon loader (restore when rs3buddy-api engine is wired) ──
   // First try the full path search (addon + DLLs together)
   const paths = getNativePaths();
   const addonPath = paths?.addonPath ?? findAddonPath();
@@ -461,6 +471,7 @@ export function loadNativeAddon(): NativeAddon | null {
     console.error('Failed to load native addon:', e);
     return null;
   }
+  */
 }
 
 // Alias for backwards compatibility

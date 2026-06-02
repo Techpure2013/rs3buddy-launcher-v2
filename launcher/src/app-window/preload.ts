@@ -143,6 +143,18 @@ let nativeAddon: any = null;
 let addonPath: string | null = null;
 let addonLoadError: Error | null = null;
 
+// ── Phase 1 (rs3buddy-launcher-v2): native engine not wired yet. ──
+// The patchrs addon.node is stripped from this repo. getNativeAddonPath() will
+// return null, so the load block below is skipped and nativeAddon stays the stub.
+// This keeps every nativeAddon.X() call in this preload a safe no-op so app
+// windows load without an engine. Phase 2 replaces the stub with the real bridge.
+try {
+  const { createNativeStub } = require('../native-stub');
+  nativeAddon = createNativeStub();
+} catch (e) {
+  debug('could not load native stub (continuing with null): ' + e);
+}
+
 try {
   addonPath = getNativeAddonPath();
   debug('Platform: ' + process.platform);
