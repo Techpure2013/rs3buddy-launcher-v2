@@ -141,6 +141,7 @@ var api = {
   sendFontAtlas: (data) => import_electron.ipcRenderer.invoke("send-font-atlas", data),
   // Auto-update
   onUpdateAvailable: (callback) => createEventListener("update-available", callback),
+  onEngineUpdateProgress: (callback) => createEventListener("engine-update-progress", callback),
   onUpdateDownloadProgress: (callback) => createEventListener("update-download-progress", callback),
   onUpdateStatus: (callback) => createEventListener("update-status", callback),
   checkForUpdate: () => import_electron.ipcRenderer.invoke("updater:check"),

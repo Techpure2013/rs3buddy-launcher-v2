@@ -178,6 +178,7 @@
     setInterval(updateResetTimer, 1e3);
     setInterval(loadDailyInfo, 5 * 60 * 1e3);
     window.api.onRefreshDailyInfo(() => loadDailyInfo());
+    setupEngineUpdateBanner();
     window.api.getAppVersion().then((v) => {
       if (elements.headerVersion)
         elements.headerVersion.textContent = `v${v}`;
@@ -2233,6 +2234,59 @@
       elements.hiscoresResult.style.display = "none";
     if (elements.hiscoresEmpty)
       elements.hiscoresEmpty.style.display = "none";
+  }
+  function setupEngineUpdateBanner() {
+    let el = null;
+    const ensure = () => {
+      if (el)
+        return el;
+      el = document.createElement("div");
+      el.id = "engine-update-banner";
+      el.innerHTML = '<span class="eub-text">Updating engine\u2026</span><div class="eub-bar"><div class="eub-fill"></div></div>';
+      document.body.appendChild(el);
+      return el;
+    };
+    const dismiss = (delayMs) => {
+      window.setTimeout(() => {
+        if (el) {
+          el.remove();
+          el = null;
+        }
+      }, delayMs);
+    };
+    window.api.onEngineUpdateProgress((p) => {
+      if (!p)
+        return;
+      if (p.phase === "uptodate") {
+        if (el) {
+          el.remove();
+          el = null;
+        }
+        return;
+      }
+      const node = ensure();
+      const text = node.querySelector(".eub-text");
+      const fill = node.querySelector(".eub-fill");
+      if (p.phase === "checking")
+        text.textContent = "Checking for engine update\u2026";
+      if (p.phase === "downloading") {
+        const pct = Math.round((p.fraction ?? 0) * 100);
+        text.textContent = `Downloading engine\u2026 ${pct}%`;
+        fill.style.width = `${pct}%`;
+      }
+      if (p.phase === "extracting") {
+        text.textContent = "Installing engine\u2026";
+        fill.style.width = "100%";
+      }
+      if (p.phase === "done") {
+        text.textContent = "Engine updated";
+        dismiss(2e3);
+      }
+      if (p.phase === "error") {
+        text.textContent = "Engine update failed (using cached)";
+        dismiss(4e3);
+      }
+    });
   }
   init();
 })();

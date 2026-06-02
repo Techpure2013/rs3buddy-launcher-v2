@@ -354,6 +354,11 @@ async function init(): Promise<void> {
   // Refresh immediately when VoS Reader (or other app) signals new data
   window.api.onRefreshDailyInfo(() => loadDailyInfo());
 
+  // Engine auto-update banner: a small bottom bar shown while the native engine
+  // downloads/installs at startup. Auto-dismisses on completion; no banner if the
+  // engine is already up to date.
+  setupEngineUpdateBanner();
+
   // Display app version
   window.api.getAppVersion().then(v => {
     if (elements.headerVersion) elements.headerVersion.textContent = `v${v}`;
@@ -2975,6 +2980,43 @@ function showHiscoresError(message: string): void {
   }
   if (elements.hiscoresResult) elements.hiscoresResult.style.display = 'none';
   if (elements.hiscoresEmpty) elements.hiscoresEmpty.style.display = 'none';
+}
+
+// Engine auto-update progress banner. Creates a small fixed bottom bar on the
+// first progress event and updates/dismisses it as the engine downloads.
+function setupEngineUpdateBanner(): void {
+  let el: HTMLElement | null = null;
+
+  const ensure = (): HTMLElement => {
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'engine-update-banner';
+    el.innerHTML =
+      '<span class="eub-text">Updating engine…</span>' +
+      '<div class="eub-bar"><div class="eub-fill"></div></div>';
+    document.body.appendChild(el);
+    return el;
+  };
+  const dismiss = (delayMs: number): void => {
+    window.setTimeout(() => { if (el) { el.remove(); el = null; } }, delayMs);
+  };
+
+  window.api.onEngineUpdateProgress((p) => {
+    if (!p) return;
+    if (p.phase === 'uptodate') { if (el) { el.remove(); el = null; } return; }
+    const node = ensure();
+    const text = node.querySelector('.eub-text') as HTMLElement;
+    const fill = node.querySelector('.eub-fill') as HTMLElement;
+    if (p.phase === 'checking') text.textContent = 'Checking for engine update…';
+    if (p.phase === 'downloading') {
+      const pct = Math.round((p.fraction ?? 0) * 100);
+      text.textContent = `Downloading engine… ${pct}%`;
+      fill.style.width = `${pct}%`;
+    }
+    if (p.phase === 'extracting') { text.textContent = 'Installing engine…'; fill.style.width = '100%'; }
+    if (p.phase === 'done') { text.textContent = 'Engine updated'; dismiss(2000); }
+    if (p.phase === 'error') { text.textContent = 'Engine update failed (using cached)'; dismiss(4000); }
+  });
 }
 
 // Initialize on load

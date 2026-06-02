@@ -109,6 +109,8 @@ interface LauncherRendererAPI {
 
   // Auto-update
   onUpdateAvailable(callback: (data: { version: string; size: number }) => void): () => void;
+  /** Engine auto-update progress (download/extract/done/error) for the banner. */
+  onEngineUpdateProgress(callback: (data: { phase: string; fraction?: number; version?: string | null; message?: string }) => void): () => void;
   onUpdateDownloadProgress(callback: (data: { percent: number }) => void): () => void;
   onUpdateStatus(callback: (data: { status: string }) => void): () => void;
   checkForUpdate(): Promise<{ version: string; size: number } | null>;
@@ -335,6 +337,8 @@ const api: LauncherRendererAPI = {
   // Auto-update
   onUpdateAvailable: (callback) =>
     createEventListener('update-available', callback),
+  onEngineUpdateProgress: (callback) =>
+    createEventListener('engine-update-progress', callback),
   onUpdateDownloadProgress: (callback) =>
     createEventListener('update-download-progress', callback),
   onUpdateStatus: (callback) =>
