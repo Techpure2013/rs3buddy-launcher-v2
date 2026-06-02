@@ -52,17 +52,11 @@ const DEFAULT_HOTKEYS_SETTINGS: HotkeysSettings = {
 import { BUILD_TYPE } from './build-config';
 const IS_BETA_BUILD = BUILD_TYPE === 'beta';
 
-const BETA_APPS: InstalledApp[] = [
-  {
-    appName: 'GL Debug App',
-    description: 'Comprehensive GL testing and debugging tool for Alt1GL',
-    appUrl: 'alt1-builtin://gl-debug-app/index.html',
-    configUrl: 'alt1-builtin://gl-debug-app/appconfig.json',
-    defaultWidth: 1200,
-    defaultHeight: 800,
-    minWidth: 800,
-    minHeight: 600
-  },
+// NOTE (rs3buddy-launcher-v2): the old patchrs-based local builtin apps
+// (alt1-builtin://...) were removed — they depended on the stripped native and
+// are being replaced by new apps that consume the rs3buddy-api HTTP engine.
+// Only HTTP-hosted web apps remain. New apps get added here as they are built.
+const HTTP_APPS: InstalledApp[] = [
   {
     appName: 'RS3 Quest Buddy Beta',
     description: 'Quest guide companion for RuneScape 3 (Beta)',
@@ -76,78 +70,9 @@ const BETA_APPS: InstalledApp[] = [
   }
 ];
 
-const ALL_APPS: InstalledApp[] = [
-  {
-    appName: 'RS3 Tile Marker',
-    description: 'Interactive tile marker overlay for RS3 with map-based visualization',
-    appUrl: 'alt1-builtin://rs3-tile-marker/index.html',
-    configUrl: 'alt1-builtin://rs3-tile-marker/appconfig.local.json',
-    defaultWidth: 800,
-    defaultHeight: 600,
-    minWidth: 400,
-    minHeight: 300
-  },
-  {
-    appName: 'GL Debug App',
-    description: 'Comprehensive GL testing and debugging tool for Alt1GL',
-    appUrl: 'alt1-builtin://gl-debug-app/index.html',
-    configUrl: 'alt1-builtin://gl-debug-app/appconfig.json',
-    defaultWidth: 1200,
-    defaultHeight: 800,
-    minWidth: 800,
-    minHeight: 600
-  },
-  {
-    appName: 'Instance Tile Mapper',
-    description: 'Map instanced quest area tiles to public map coordinates',
-    appUrl: 'alt1-builtin://instance-tile-mapper/index.html',
-    configUrl: 'alt1-builtin://instance-tile-mapper/appconfig.json',
-    defaultWidth: 1400,
-    defaultHeight: 900,
-    minWidth: 900,
-    minHeight: 600
-  },
-  {
-    appName: 'NPC Recorder',
-    description: 'Detect, highlight, and catalog NPCs in the 3D world',
-    appUrl: 'alt1-builtin://npc-recorder/index.html',
-    configUrl: 'alt1-builtin://npc-recorder/appconfig.local.json',
-    defaultWidth: 500,
-    defaultHeight: 600,
-    minWidth: 300,
-    minHeight: 400
-  },
-  {
-    appName: 'Inventory Learner',
-    description: 'Detect tooltips and learn inventory item name/icon associations',
-    appUrl: 'alt1-builtin://inventory-learner/index.html',
-    configUrl: '',
-    defaultWidth: 500,
-    defaultHeight: 600,
-    minWidth: 350,
-    minHeight: 400
-  },
-  {
-    appName: 'VoS Reader',
-    description: 'Detects Voice of Seren clans from the game screen and reports to the community API',
-    appUrl: 'alt1-builtin://vos-reader/index.html',
-    configUrl: 'alt1-builtin://vos-reader/appconfig.json',
-    defaultWidth: 400,
-    defaultHeight: 500,
-    minWidth: 350,
-    minHeight: 400
-  },
-  {
-    appName: 'RS3 XP Buddy',
-    description: 'Track XP drops in RuneScape 3',
-    appUrl: 'alt1-builtin://xp-buddy/index.html',
-    configUrl: 'alt1-builtin://xp-buddy/appconfig.json',
-    defaultWidth: 500,
-    defaultHeight: 600,
-    minWidth: 150,
-    minHeight: 80
-  }
-];
+// BETA and ALL builds currently expose the same HTTP app list (no local builtins).
+const BETA_APPS: InstalledApp[] = HTTP_APPS;
+const ALL_APPS: InstalledApp[] = HTTP_APPS;
 
 const BUILT_IN_APPS: InstalledApp[] = IS_BETA_BUILD ? BETA_APPS : ALL_APPS;
 

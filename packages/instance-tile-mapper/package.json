@@ -1,9 +1,0 @@
-{
-  "name": "instance-tile-mapper",
-  "version": "1.0.0",
-  "main": "dist/index.html",
-  "scripts": {
-    "build": "npm run copy",
-    "copy": "node -e \"const fs=require('fs');fs.mkdirSync('dist',{recursive:true});fs.cpSync('src','dist',{recursive:true});console.log('Copied instance-tile-mapper');\""
-  }
-}
