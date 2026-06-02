@@ -17,7 +17,7 @@ import type { BrowserWindow as BrowserWindowType } from 'electron';
 import { initDataDir, detectPaths, getConfig, saveConfig, getSessions, removeSession, saveCredentials, saveClientState, loadClientState, removeClientState, cleanupStaleClientStates } from './config';
 import { setProcessCallbacks, startProcessMonitor, stopProcessMonitor, getPendingLaunch, clearPendingLaunch, getAllRs2ClientPids, setAutoInject, setUseOverlay, doesOverlayPipeExist, markPidInjected } from './game';
 import { cleanupLegacyDllCopies, tryConnectToExistingClient, injectIntoProcess, isInjected, isInjectedPid, reconnectToOverlay } from './inject';
-import { engineController } from './engine';
+import { engineController, engineUpdater } from './engine';
 import {
   createMainWindow,
   getMainWindow,
@@ -248,6 +248,14 @@ function initialize(): void {
   // and register IPC handlers for isolated preload windows
   addonManager.init();
   registerAddonIpcHandlers();
+
+  // Kick off the engine auto-update (NON-blocking — the UI loads immediately and
+  // the renderer shows a progress banner via 'engine-update-progress' IPC). The
+  // engine isn't needed until the toggle is flipped, so we don't await this.
+  void engineUpdater.checkAndUpdate().then((r) => {
+    if (r.error) console.warn('[Main] Engine update check:', r.error);
+    else console.log('[Main] Engine version:', r.version, r.updated ? '(updated)' : '(current)');
+  }).catch((e) => console.warn('[Main] Engine updater threw:', e));
 
   // Load saved injection settings from config and apply BEFORE game detection starts
   const ipcMain = require('electron').ipcMain;

@@ -1,11 +1,15 @@
 import { spawn } from "child_process";
 import * as path from "path";
+import { app } from "electron";
+import extract from "extract-zip";
 import {
   createEngineController,
   type EngineController,
   type EngineStatus,
   type EngineChild,
 } from "./engine-controller";
+import { fetchText, downloadFile } from "./engine-download";
+import { createEngineUpdater, type UpdateProgress } from "./engine-updater";
 
 export type { EngineStatus };
 export { decideEngineAction } from "./engine-decision";
@@ -14,19 +18,51 @@ export { decideEngineAction } from "./engine-decision";
 const ENGINE_PORT = 4400;
 
 /**
- * Locate the rs3buddy-api `sdk-host.bundle.js`. Override with RS3B_ENGINE_BUNDLE.
- * Default: the sibling rs3buddy-api checkout next to this launcher repo.
- * Resolved from __dirname (dist/engine or src/engine — both 3 levels under the
- * repo root, whose sibling is rs3buddy-api).
+ * Engine artifact distribution base. The launcher GETs `version.json` from here
+ * each launch (CDN, not API — no rate limit, no token) and downloads `engine.zip`
+ * when newer. Override with RS3B_ENGINE_DIST_BASE (e.g. a mirror/proxy if the api
+ * repo ever goes private).
+ */
+const ENGINE_DIST_BASE =
+  process.env.RS3B_ENGINE_DIST_BASE ??
+  "https://github.com/Techpure2013/rs3buddy-api/releases/latest/download/";
+
+/** Cache root for the auto-updated engine: <userData>/engine. */
+function engineCacheDir(): string {
+  return path.join(app.getPath("userData"), "engine");
+}
+
+/**
+ * Locate the spawnable `sdk-host.bundle.js`.
+ *  1. RS3B_ENGINE_BUNDLE override (local dev against a sibling build) wins.
+ *  2. else the auto-updater's cache: <userData>/engine/current/sdk-host.bundle.js.
  */
 function engineBundlePath(): string {
   if (process.env.RS3B_ENGINE_BUNDLE) return process.env.RS3B_ENGINE_BUNDLE;
-  return path.resolve(
-    __dirname,
-    "..", "..", "..", "..",
-    "rs3buddy-api", "rundir", "js", "sdk-host.bundle.js",
-  );
+  return path.join(engineCacheDir(), "current", "sdk-host.bundle.js");
 }
+
+/**
+ * Engine auto-updater. On startup `main.ts` calls checkAndUpdate() (non-blocking);
+ * it downloads the latest engine into the cache and reports progress over the
+ * 'engine-update-progress' IPC channel for the renderer banner.
+ */
+export const engineUpdater = createEngineUpdater({
+  distBase: ENGINE_DIST_BASE,
+  cacheDir: engineCacheDir(),
+  fetchText,
+  downloadZip: (url, dest, onP) => downloadFile(url, dest, (f) => onP?.(f)),
+  extract: (zip, target) => extract(zip, { dir: target }),
+  onProgress: (p: UpdateProgress) => {
+    try {
+      // Lazy require avoids a circular import + tolerates "window not ready yet".
+      (require("../windows") as { sendToMainWindow: (c: string, ...a: unknown[]) => void })
+        .sendToMainWindow("engine-update-progress", p);
+    } catch {
+      /* main window not ready */
+    }
+  },
+});
 
 /**
  * Production engine controller: spawns `node sdk-host.bundle.js` (the rs3buddy-api
