@@ -1,41 +1,31 @@
 {
-  "name": "rs3-launcher-buddy",
-  "version": "1.0.2-beta",
-  "description": "RS3 Launcher Buddy with OpenGL overlay library",
+  "name": "rs3buddy-launcher",
+  "version": "0.1.0",
+  "description": "RS3Buddy Launcher featuring RS3Buddy-API which supports multi-languaged development",
   "main": "launcher/dist/main.js",
   "scripts": {
-    "install": "node-gyp rebuild",
-    "build:native": "node-gyp rebuild",
     "build:apps": "cd packages/rs3-tile-marker && npm install && npm run build && cd ../gl-debug-app && npm run build && cd ../npc-recorder && npm install && npm run build && cd ../shared-data && npm run build && cd ../inventory-learner && npm install && npm run build && cd ../vos-reader && npm run build && cd ../instance-tile-mapper && npm run build && cd ../.. && npm run copy:apps",
     "copy:apps": "node -e \"const fs=require('fs');const apps=[['packages/rs3-tile-marker/dist','launcher/builtin-apps/rs3-tile-marker'],['packages/gl-debug-app/dist','launcher/builtin-apps/gl-debug-app'],['packages/npc-recorder/dist','launcher/builtin-apps/npc-recorder'],['packages/shared-data/dist','launcher/builtin-apps/shared-data'],['packages/inventory-learner/dist','launcher/builtin-apps/inventory-learner'],['packages/vos-reader/dist','launcher/builtin-apps/vos-reader'],['packages/instance-tile-mapper/dist','launcher/builtin-apps/instance-tile-mapper']];apps.forEach(([src,dst])=>{fs.mkdirSync(dst,{recursive:true});fs.cpSync(src,dst,{recursive:true});});console.log('Copied built-in apps');\"",
-    "build:launcher": "cd launcher && npm run build",
-    "build": "npm run build:native && npm run build:apps && npm run build:launcher",
+    "build:launcher": "cd launcher && npm run build:all",
+    "build": "npm run build:apps && npm run build:launcher",
     "build:quick": "npm run build:launcher",
     "start": "cd launcher && npm start",
     "dev": "cd launcher && npm run dev",
     "package": "npm run build:apps && cd launcher && npm run package",
     "package:win": "npm run build:apps && cd launcher && npm run package:win",
     "package:linux": "npm run build:apps && cd launcher && npm run package:linux",
-    "package:all": "npm run build:apps && cd launcher && npm run package:all",
-    "test:gl": "node test-gl.js"
+    "package:all": "npm run build:apps && cd launcher && npm run package:all"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Techpure2013/RS3LauncherBuddy.git"
+    "url": ""
   },
   "keywords": [
-    "alt1",
     "runescape",
     "overlay",
-    "opengl"
+    "launcher",
+    "rs3buddy"
   ],
   "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "node-gyp": "^10.0.1"
-  },
-  "dependencies": {
-    "node-addon-api": "^7.0.0"
-  },
-  "gypfile": true
+  "license": "MIT"
 }
