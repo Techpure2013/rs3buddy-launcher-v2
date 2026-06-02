@@ -1,0 +1,16 @@
+{
+  "appName": "GL Debug App",
+  "description": "Comprehensive GL testing and debugging tool for Alt1GL. Test overlay triggers, blend modes, textures, shaders, and more.",
+  "appUrl": "index.html",
+  "iconUrl": "",
+  "defaultWidth": 1200,
+  "defaultHeight": 800,
+  "minWidth": 800,
+  "minHeight": 600,
+  "permissions": {
+    "pixel": true,
+    "gamestate": true,
+    "overlay": true,
+    "files": true
+  }
+}

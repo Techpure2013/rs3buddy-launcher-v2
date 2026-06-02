@@ -1,0 +1,11 @@
+{
+  "name": "shared-data",
+  "version": "1.0.0",
+  "description": "Shared sprite hash and font data for built-in apps",
+  "scripts": {
+    "build": "npm run copy",
+    "copy": "node -e \"const fs=require('fs');fs.mkdirSync('dist/data',{recursive:true});fs.cpSync('src/data','dist/data',{recursive:true});console.log('Copied shared-data');\""
+  },
+  "author": "Techpure",
+  "license": "MIT"
+}

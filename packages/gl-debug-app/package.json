@@ -1,0 +1,14 @@
+{
+  "name": "gl-debug-app",
+  "version": "1.0.0",
+  "description": "GL Debug and Test Application for Alt1GL",
+  "main": "dist/index.html",
+  "scripts": {
+    "build": "npm run copy",
+    "copy": "node -e \"const fs=require('fs');fs.mkdirSync('dist',{recursive:true});fs.cpSync('src','dist',{recursive:true});console.log('Copied gl-debug-app');\"",
+    "watch": "nodemon --watch src -e html,css,js --exec 'npm run copy'"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {}
+}

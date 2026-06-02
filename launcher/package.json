@@ -1,0 +1,101 @@
+{
+  "name": "rs3-launcher-buddy",
+  "version": "1.0.2-beta",
+  "description": "RS3 Launcher Buddy - Electron Application with Native OpenGL Overlay",
+  "author": "Techpure",
+  "main": "dist/main.js",
+  "scripts": {
+    "set-build:dev": "node -e \"require('fs').writeFileSync('src/build-config.ts','export const BUILD_TYPE: \\'beta\\' | \\'dev\\' = \\'dev\\';\\n')\"",
+    "set-build:beta": "node -e \"require('fs').writeFileSync('src/build-config.ts','export const BUILD_TYPE: \\'beta\\' | \\'dev\\' = \\'beta\\';\\n')\"",
+    "build:ts": "tsc",
+    "build:launcher-preload": "esbuild src/launcher/preload.ts --bundle --outfile=launcherPreload.js --platform=node --target=node18 --external:electron",
+    "build:launcher-renderer": "esbuild src/launcher/renderer.ts --bundle --outfile=launcherRenderer.js --platform=browser --target=chrome120",
+    "build:workspace": "esbuild src/workspace/renderer.ts --bundle --outfile=workspaceRenderer.js --platform=browser --target=chrome120",
+    "build:workspace-preload": "esbuild src/workspace/preload.ts --bundle --outfile=workspacePreload.js --platform=node --target=node18 --external:electron",
+    "build:app-window-preload": "esbuild src/app-window/preload.ts --bundle --outdir=app-window --platform=node --target=node18 --external:electron --external:fs --external:path",
+    "build:app-window-preload-isolated": "esbuild src/app-window/preload-isolated.ts --bundle --outdir=app-window --platform=node --target=node18 --external:electron",
+    "build:all": "npm run set-build:dev && npm run build:ts && npm run build:launcher-preload && npm run build:launcher-renderer && npm run build:workspace && npm run build:workspace-preload && npm run build:app-window-preload && npm run build:app-window-preload-isolated",
+    "build:all:beta": "npm run set-build:beta && npm run build:ts && npm run build:launcher-preload && npm run build:launcher-renderer && npm run build:workspace && npm run build:workspace-preload && npm run build:app-window-preload && npm run build:app-window-preload-isolated",
+    "build": "npm run build:all && electron-builder",
+    "start": "npm run build:all && electron . --class=rs3-launcher-buddy",
+    "dev": "npm run build:all && electron . --dev --class=rs3-launcher-buddy",
+    "package": "npm run build:all && electron-builder --win",
+    "package:win": "npm run build:all && electron-builder --win",
+    "package:beta": "npm run build:all:beta && electron-builder --win",
+    "package:beta:win": "npm run build:all:beta && electron-builder --win",
+    "package:linux": "npm run build:all && electron-builder --linux AppImage",
+    "package:all": "npm run build:all && electron-builder --win portable --linux AppImage",
+    "start:beta": "npm run build:all:beta && electron . --class=rs3-launcher-buddy",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "build": {
+    "appId": "com.rs3launcherbuddy.app",
+    "productName": "RS3 Launcher Buddy",
+    "icon": "assets/app-icon.ico",
+    "afterPack": "./scripts/stamp-icon.js",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "app-window/**/*",
+      "*.html",
+      "*.css",
+      "*.js",
+      "assets/**/*",
+      "!src/**/*",
+      "!*.ts",
+      "!*.tsx"
+    ],
+    "extraResources": [
+      {
+        "from": "../build/Release",
+        "to": "lib",
+        "filter": [
+          "*.node",
+          "*.dll",
+          "*.so"
+        ]
+      },
+      {
+        "from": "builtin-apps",
+        "to": "builtin-apps",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/app-icon.ico",
+      "signAndEditExecutable": false
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/RS3QuestBuddyLauncher.png",
+      "category": "Game",
+      "executableName": "rs3-launcher-buddy",
+      "desktop": {
+        "Name": "RS3 Launcher Buddy",
+        "Comment": "RS3 Launcher Buddy for RuneScape",
+        "Categories": "Game;",
+        "StartupWMClass": "rs3-launcher-buddy"
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "cross-env": "^10.1.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "esbuild": "^0.19.11",
+    "rcedit": "^4.0.1",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.2"
+  },
+  "dependencies": {
+    "active-win": "^8.2.1",
+    "node-addon-api": "^7.0.0"
+  }
+}

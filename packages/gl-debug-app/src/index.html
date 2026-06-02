@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GL Debug App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>GL Debug & Test Suite</h1>
+            <div class="status-bar">
+                <span id="connection-status" class="status disconnected">Disconnected</span>
+                <span id="fps-counter">-- FPS</span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <nav class="test-categories">
+                    <button class="category-btn active" data-category="overview">Overview</button>
+                    <button class="category-btn" data-category="connection">Connection</button>
+                    <button class="category-btn" data-category="capture">Capture</button>
+                    <button class="category-btn" data-category="render">Render Recording</button>
+                    <button class="category-btn" data-category="objects">GL Objects</button>
+                    <button class="category-btn" data-category="overlay">Overlays</button>
+                    <button class="category-btn" data-category="textures">Textures</button>
+                    <button class="category-btn" data-category="shaders">Shaders</button>
+                    <button class="category-btn" data-category="performance">Performance</button>
+                    <button class="category-btn" data-category="memory">Memory Inspector</button>
+                    <button class="category-btn" data-category="alltests">Run All Tests</button>
+                </nav>
+
+                <div class="quick-actions">
+                    <h3>Quick Actions</h3>
+                    <button id="btn-refresh" class="action-btn">Refresh State</button>
+                    <button id="btn-clear-log" class="action-btn">Clear Log</button>
+                    <button id="btn-export-log" class="action-btn">Export Log</button>
+                </div>
+            </aside>
+
+            <main class="content-area">
+                <!-- Overview Panel -->
+                <section id="panel-overview" class="panel active">
+                    <h2>System Overview</h2>
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <h3>Client Status</h3>
+                            <div id="client-info">
+                                <p><strong>Connected:</strong> <span id="info-connected">No</span></p>
+                                <p><strong>PID:</strong> <span id="info-pid">--</span></p>
+                                <p><strong>Window:</strong> <span id="info-window">--</span></p>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <h3>Renderer Info</h3>
+                            <div id="renderer-info">
+                                <p><strong>GL Renderer:</strong> <span id="info-renderer">--</span></p>
+                                <p><strong>GL Version:</strong> <span id="info-glversion">--</span></p>
+                                <p><strong>Vendor:</strong> <span id="info-vendor">--</span></p>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <h3>Memory State</h3>
+                            <div id="memory-info">
+                                <p><strong>Used:</strong> <span id="info-mem-used">--</span></p>
+                                <p><strong>Total:</strong> <span id="info-mem-total">--</span></p>
+                                <p><strong>Allocations:</strong> <span id="info-mem-allocs">--</span></p>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <h3>GL Objects</h3>
+                            <div id="objects-info">
+                                <p><strong>Programs:</strong> <span id="info-programs">--</span></p>
+                                <p><strong>Textures:</strong> <span id="info-textures">--</span></p>
+                                <p><strong>VAOs:</strong> <span id="info-vaos">--</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Connection Panel -->
+                <section id="panel-connection" class="panel">
+                    <h2>Connection Tests</h2>
+                    <div class="test-controls">
+                        <button id="test-native-addon" class="test-btn">Test Native Addon</button>
+                        <button id="test-find-client" class="test-btn">Find RS Client</button>
+                        <button id="test-hook-client" class="test-btn">Hook Client</button>
+                        <button id="test-window-apis" class="test-btn">Test Window APIs</button>
+                        <button id="test-debug-apis" class="test-btn">Test Debug APIs</button>
+                    </div>
+                    <div class="test-results" id="connection-results"></div>
+                </section>
+
+                <!-- Capture Panel -->
+                <section id="panel-capture" class="panel">
+                    <h2>Screen Capture</h2>
+                    <div class="capture-controls">
+                        <div class="control-group">
+                            <label>X: <input type="number" id="capture-x" value="0" min="0"></label>
+                            <label>Y: <input type="number" id="capture-y" value="0" min="0"></label>
+                            <label>Width: <input type="number" id="capture-w" value="256" min="1"></label>
+                            <label>Height: <input type="number" id="capture-h" value="256" min="1"></label>
+                        </div>
+                        <button id="btn-capture" class="test-btn primary">Capture Framebuffer</button>
+                        <button id="btn-capture-full" class="test-btn">Capture Full Screen</button>
+                    </div>
+                    <div class="capture-preview">
+                        <canvas id="capture-canvas" width="256" height="256"></canvas>
+                        <div class="capture-info">
+                            <p>Size: <span id="capture-size">--</span></p>
+                            <p>Time: <span id="capture-time">--</span></p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Render Recording Panel -->
+                <section id="panel-render" class="panel">
+                    <h2>Render Recording</h2>
+                    <div class="render-controls">
+                        <div class="control-group">
+                            <label>Max Frames: <input type="number" id="render-maxframes" value="1" min="1" max="10"></label>
+                            <label>Timeout (ms): <input type="number" id="render-timeout" value="5000" min="100"></label>
+                        </div>
+                        <div class="control-group checkboxes">
+                            <label><input type="checkbox" id="feat-uniforms" checked> Uniforms</label>
+                            <label><input type="checkbox" id="feat-vertexarray" checked> Vertex Arrays</label>
+                            <label><input type="checkbox" id="feat-textures"> Textures</label>
+                            <label><input type="checkbox" id="feat-framebuffer"> Framebuffer</label>
+                            <label><input type="checkbox" id="feat-computebindings"> Compute Bindings</label>
+                        </div>
+                        <button id="btn-record-once" class="test-btn primary">Record Once</button>
+                        <button id="btn-stream-start" class="test-btn">Start Streaming</button>
+                        <button id="btn-stream-stop" class="test-btn" disabled>Stop Streaming</button>
+                    </div>
+                    <div class="render-stats">
+                        <h3>Last Recording Stats</h3>
+                        <p>Draw Calls: <span id="stat-drawcalls">--</span></p>
+                        <p>Unique Programs: <span id="stat-programs">--</span></p>
+                        <p>Unique VAOs: <span id="stat-vaos">--</span></p>
+                        <p>Total Vertices: <span id="stat-vertices">--</span></p>
+                    </div>
+                    <div class="render-list" id="render-list">
+                        <p class="placeholder">Record render calls to see details...</p>
+                    </div>
+                </section>
+
+                <!-- GL Objects Panel -->
+                <section id="panel-objects" class="panel">
+                    <h2>GL Objects & Uniforms</h2>
+                    <div class="objects-controls">
+                        <button id="btn-refresh-objects" class="test-btn primary">Refresh All Objects</button>
+                        <button id="btn-get-gl-state" class="test-btn">Get GL State</button>
+                        <button id="btn-get-object-stats" class="test-btn">Get Object Stats</button>
+                    </div>
+                    <div class="objects-stats" id="objects-stats">
+                        <h3>Object Statistics</h3>
+                        <div id="objects-stats-content">
+                            <p class="placeholder">Click "Get Object Stats" to view...</p>
+                        </div>
+                    </div>
+                    <div class="objects-list">
+                        <h3>GL Programs with Uniforms</h3>
+                        <div id="programs-list">
+                            <p class="placeholder">Click "Refresh All Objects" to list programs...</p>
+                        </div>
+                    </div>
+                    <div class="gl-state-display">
+                        <h3>Current GL State</h3>
+                        <div id="gl-state-content">
+                            <p class="placeholder">Click "Get GL State" to view...</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Overlay Panel -->
+                <section id="panel-overlay" class="panel">
+                    <h2>Overlay Tests</h2>
+                    <div class="overlay-controls">
+                        <h3>Quick Test (Start Here!)</h3>
+                        <p style="color: #888; margin: 5px 0;">Click these buttons to test overlay rendering</p>
+                        <div class="button-grid">
+                            <button id="test-simple-frameend" class="test-btn" style="background: #228B22; font-weight: bold;">Simple Frameend Test</button>
+                            <button id="test-diagnostic" class="test-btn" style="background: #CC0000; font-weight: bold;">DIAGNOSTIC (Huge Red Triangle)</button>
+                            <button id="test-all-triggers" class="test-btn" style="background: #9932CC; font-weight: bold;">Test ALL Triggers</button>
+                        </div>
+
+                        <h3>Trigger Types</h3>
+                        <div class="button-grid">
+                            <button id="test-overlay-before" class="test-btn">Test BEFORE</button>
+                            <button id="test-overlay-after" class="test-btn">Test AFTER</button>
+                            <button id="test-overlay-replace" class="test-btn">Test REPLACE</button>
+                            <button id="test-overlay-frameend" class="test-btn">Test FRAMEEND</button>
+                            <button id="test-overlay-passive" class="test-btn">Test PASSIVE</button>
+                        </div>
+
+                        <h3>Blend Modes</h3>
+                        <div class="button-grid">
+                            <button id="test-blend-default" class="test-btn">Test DEFAULT</button>
+                            <button id="test-blend-blend" class="test-btn">Test BLEND</button>
+                            <button id="test-blend-noblend" class="test-btn">Test NOBLEND</button>
+                        </div>
+
+                        <h3>Advanced</h3>
+                        <div class="button-grid">
+                            <button id="test-overlay-duration" class="test-btn">Test Duration (Auto-Expire)</button>
+                            <button id="test-overlay-multiple" class="test-btn">Test Multiple Overlays</button>
+                            <button id="test-overlay-uniforms" class="test-btn">Test Uniform Manipulation</button>
+                            <button id="test-builtin-uniforms" class="test-btn">Test Builtin Uniforms</button>
+                        </div>
+                    </div>
+                    <div class="active-overlays">
+                        <h3>Active Overlays</h3>
+                        <div id="overlay-list">
+                            <p class="placeholder">No active overlays</p>
+                        </div>
+                        <button id="btn-stop-all-overlays" class="test-btn danger">Stop All Overlays</button>
+                    </div>
+                </section>
+
+                <!-- Textures Panel -->
+                <section id="panel-textures" class="panel">
+                    <h2>Texture Operations</h2>
+                    <div class="texture-controls">
+                        <button id="test-create-texture" class="test-btn">Create Test Texture</button>
+                        <button id="test-texture-capture" class="test-btn">Capture Game Texture</button>
+                        <button id="test-texture-upload" class="test-btn">Test Texture Upload</button>
+                        <button id="btn-list-textures" class="test-btn">List All Textures</button>
+                    </div>
+                    <div class="texture-preview">
+                        <canvas id="texture-canvas" width="256" height="256"></canvas>
+                        <div class="texture-info">
+                            <p>Texture ID: <span id="tex-id">--</span></p>
+                            <p>Size: <span id="tex-size">--</span></p>
+                            <p>Format: <span id="tex-format">--</span></p>
+                        </div>
+                    </div>
+                    <div class="texture-list" id="texture-list">
+                        <p class="placeholder">Click "List All Textures" to see available textures...</p>
+                    </div>
+                </section>
+
+                <!-- Shaders Panel -->
+                <section id="panel-shaders" class="panel">
+                    <h2>Shader Analysis</h2>
+                    <div class="shader-controls">
+                        <button id="btn-analyze-shaders" class="test-btn primary">Analyze All Shaders</button>
+                        <button id="test-create-program" class="test-btn">Test Create Program</button>
+                        <button id="test-create-vao" class="test-btn">Test Create VAO</button>
+                    </div>
+                    <div class="shader-stats">
+                        <h3>Shader Statistics</h3>
+                        <p>Total Programs: <span id="shader-total">--</span></p>
+                        <p>Vertex Shaders: <span id="shader-vertex">--</span></p>
+                        <p>Fragment Shaders: <span id="shader-fragment">--</span></p>
+                        <p>Compute Shaders: <span id="shader-compute">--</span></p>
+                    </div>
+                    <div class="shader-list" id="shader-list">
+                        <p class="placeholder">Click "Analyze All Shaders" to see shader details...</p>
+                    </div>
+                </section>
+
+                <!-- Performance Panel -->
+                <section id="panel-performance" class="panel">
+                    <h2>Performance Tests</h2>
+                    <div class="perf-controls">
+                        <button id="test-frame-timing" class="test-btn primary">Measure Frame Timing</button>
+                        <button id="test-benchmark" class="test-btn">Run Benchmark</button>
+                        <button id="test-memory-state" class="test-btn">Check Memory State</button>
+                    </div>
+                    <div class="perf-results">
+                        <h3>Frame Timing</h3>
+                        <p>FPS: <span id="perf-fps">--</span></p>
+                        <p>Frame Time: <span id="perf-frametime">--</span></p>
+                        <p>Min/Max: <span id="perf-minmax">--</span></p>
+
+                        <h3>Benchmark Results</h3>
+                        <p>Record Render: <span id="bench-record">--</span></p>
+                        <p>Get State: <span id="bench-state">--</span></p>
+                        <p>Capture: <span id="bench-capture">--</span></p>
+                    </div>
+                </section>
+
+                <!-- Memory Inspector Panel -->
+                <section id="panel-memory" class="panel">
+                    <h2>Memory Inspector</h2>
+                    <div class="button-row">
+                        <button onclick="updateMemoryInspector()" class="test-btn primary">Refresh</button>
+                        <button id="mem-refresh-toggle" onclick="toggleMemoryRefresh()" class="test-btn">Auto-Refresh: OFF</button>
+                    </div>
+                    <div id="memory-inspector-content">
+                        <p class="placeholder">Click Refresh to load memory data</p>
+                    </div>
+                </section>
+
+                <!-- All Tests Panel -->
+                <section id="panel-alltests" class="panel">
+                    <h2>Comprehensive Test Suite</h2>
+                    <div class="alltests-controls">
+                        <button id="btn-run-all-tests" class="test-btn primary large">Run All Tests</button>
+                        <button id="btn-run-quick-test" class="test-btn">Run Quick Test</button>
+                        <button id="btn-diagnostic-report" class="test-btn" style="background: #2196F3; font-weight: bold;">Generate Diagnostic Report</button>
+                    </div>
+                    <div class="test-progress">
+                        <div class="progress-bar">
+                            <div id="test-progress-fill" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <p id="test-progress-text">Ready to run tests</p>
+                    </div>
+                    <div class="test-summary">
+                        <div class="summary-stat passed">
+                            <span class="count" id="tests-passed">0</span>
+                            <span class="label">Passed</span>
+                        </div>
+                        <div class="summary-stat failed">
+                            <span class="count" id="tests-failed">0</span>
+                            <span class="label">Failed</span>
+                        </div>
+                        <div class="summary-stat total">
+                            <span class="count" id="tests-total">0</span>
+                            <span class="label">Total</span>
+                        </div>
+                    </div>
+                    <div class="test-results-list" id="all-test-results">
+                        <p class="placeholder">Run tests to see results...</p>
+                    </div>
+                </section>
+            </main>
+
+            <aside class="log-panel">
+                <div class="log-header">
+                    <h3>Log Output</h3>
+                    <button id="btn-toggle-log" class="icon-btn" title="Toggle Log">_</button>
+                </div>
+                <div id="log-output" class="log-content"></div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

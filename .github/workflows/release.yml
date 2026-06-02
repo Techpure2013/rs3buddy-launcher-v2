@@ -1,0 +1,162 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache Boost headers
+        id: cache-boost
+        uses: actions/cache@v4
+        with:
+          path: C:\boost
+          key: boost-1.90.0-windows-v2
+
+      - name: Verify Boost cache
+        id: verify-boost
+        shell: cmd
+        run: |
+          if exist "C:\boost\boost_1_90_0\boost\version.hpp" (
+            echo Boost headers found in cache
+            echo valid=true>> "%GITHUB_OUTPUT%"
+          ) else (
+            echo Boost headers NOT found, will download
+            echo valid=false>> "%GITHUB_OUTPUT%"
+          )
+
+      - name: Download Boost headers
+        if: steps.verify-boost.outputs.valid != 'true'
+        shell: cmd
+        run: |
+          echo Downloading Boost 1.90.0...
+          curl -L -o "%TEMP%\boost.7z" "https://archives.boost.io/release/1.90.0/source/boost_1_90_0.7z"
+          echo Extracting with 7z (much faster than Expand-Archive)...
+          7z x "%TEMP%\boost.7z" -oC:\boost -y
+          echo Done.
+          dir "C:\boost\boost_1_90_0\boost" /b | more +0 < nul
+
+      - name: Set Boost environment
+        shell: bash
+        run: echo "BOOST_INCLUDEDIR=C:/boost/boost_1_90_0" >> "$GITHUB_ENV"
+
+      - name: Install root dependencies
+        run: npm install
+        env:
+          _CL_: /std:c++20
+
+      - name: Install launcher dependencies
+        working-directory: launcher
+        run: npm install
+
+      - name: Build native addon and libraries
+        run: npm run build:native
+        env:
+          _CL_: /std:c++20
+
+      - name: Build built-in apps
+        run: npm run build:apps
+
+      - name: Package Windows portable exe
+        working-directory: launcher
+        run: npm run package:win
+
+      - name: List release output
+        shell: pwsh
+        run: Get-ChildItem launcher\release -Recurse | Format-Table Name, Length
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: launcher/release/*.exe
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libboost-dev \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            libx11-dev \
+            libxcb1-dev \
+            libxcb-keysyms1-dev \
+            libxcb-xfixes0-dev \
+            build-essential \
+            python3
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install launcher dependencies
+        working-directory: launcher
+        run: npm install
+
+      - name: Build native addon and libraries
+        run: npm run build:native
+
+      - name: Build built-in apps
+        run: npm run build:apps
+
+      - name: Package Linux AppImage
+        working-directory: launcher
+        run: npm run package:linux
+
+      - name: List release output
+        run: ls -lah launcher/release/
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: launcher/release/*.AppImage
+          if-no-files-found: error
+
+  create-release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: ./release
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: ./release
+
+      - name: List release files
+        run: ls -lah ./release/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./release/*
+          draft: false
+          generate_release_notes: true

@@ -1,0 +1,14 @@
+{
+  "appName": "VoS Reader",
+  "description": "Detects Voice of Seren clans from the game screen and reports to the community API",
+  "appUrl": "index.html",
+  "iconUrl": "",
+  "defaultWidth": 400,
+  "defaultHeight": 500,
+  "minWidth": 350,
+  "minHeight": 400,
+  "permissions": {
+    "pixel": true,
+    "gamestate": true
+  }
+}

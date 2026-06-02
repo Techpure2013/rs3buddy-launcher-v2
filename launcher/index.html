@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RS3 Launcher Buddy (Beta)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="titlebar">
+    <div class="titlebar-title">RS3 Launcher Buddy (Beta)</div>
+    <div class="titlebar-controls">
+      <button class="titlebar-btn minimize-btn" id="minimizeBtn">&#x2212;</button>
+      <button class="titlebar-btn close-btn" id="closeBtn">&#x2715;</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="header-compact">
+      <img src="assets/RS3QuestBuddyLauncher.png" alt="" class="logo-sm" style="border-radius: 50%;" onerror="this.style.display='none'">
+      <span class="header-title">RS3 Launcher Buddy</span>
+      <span class="header-version" id="headerVersion"></span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="home">Home</button>
+      <button class="tab-btn" data-tab="apps">Apps</button>
+      <button class="tab-btn" data-tab="ge">GE Prices</button>
+      <button class="tab-btn" data-tab="highscores">Highscores</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- Home Tab -->
+    <div class="tab-content active" id="tab-home">
+      <!-- GL Toggle - top right -->
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0;">
+        <div style="font-size: 9px; color: #b08a00; line-height: 1.3; max-width: 260px;">GL Overlay has not been specifically approved or denied by Jagex. Enable at your own discretion.</div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+          <span style="font-size: 10px; color: #888;">GL Overlay</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="enableGlOverlay">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Launch Buttons -->
+      <div class="launch-section">
+        <button class="launch-btn primary" id="launchBtn" style="display: none;">
+          <img src="assets/runescape-icon.png" alt="" class="launch-btn-icon">
+          <span class="launch-text">Play (via Jagex Account)</span>
+        </button>
+        <button class="launch-btn secondary" id="launchJagexBtn">
+          <img src="assets/jagex-launcher.png" alt="" class="launch-btn-icon">
+          <span class="launch-text">Open Jagex Launcher</span>
+        </button>
+      </div>
+
+      <!-- Account Section -->
+      <div class="section account-section" id="accountSectionWrapper">
+        <div class="section-header">
+          <span class="section-title">Account (Optional)</span>
+          <button class="btn btn-small btn-text" id="loginBtn">Login with Jagex</button>
+        </div>
+        <div id="accountSection" style="display: none;">
+          <div class="account-dropdown-container">
+            <div class="account-dropdown" id="accountDropdown">
+              <div class="account-dropdown-selected" id="accountDropdownSelected">
+                <span class="account-icon">&#x1F464;</span>
+                <span class="account-name" id="selectedAccountName">Select Account</span>
+                <span class="dropdown-arrow">&#x25BC;</span>
+              </div>
+              <div class="account-dropdown-menu" id="accountDropdownMenu">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+            <button class="btn btn-small btn-text" id="logoutBtn">Logout</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- News Feed (collapsed) -->
+      <div class="section news-section" id="newsSection" style="display: none;">
+        <div class="section-header">
+          <span class="section-title">RuneScape News</span>
+        </div>
+        <div class="news-list" id="newsList"></div>
+      </div>
+    </div>
+
+    <!-- Apps Tab -->
+    <div class="tab-content" id="tab-apps">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Installed Apps</span>
+          <button class="btn btn-small" id="addAppBtn">+ Add App</button>
+        </div>
+        <div class="apps-grid" id="appsGrid">
+          <div class="app-card add-app-card" id="addAppCard">
+            <span class="app-icon">&#x2795;</span>
+            <span class="app-name">Add App</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add App Modal -->
+      <div class="modal" id="addAppModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <span>Add App</span>
+            <button class="modal-close" id="closeAddAppModal">&#x2715;</button>
+          </div>
+          <div class="modal-body">
+            <p>Enter the URL to an appconfig.json file:</p>
+            <input type="text" class="input" id="appUrlInput" placeholder="https://example.com/appconfig.json">
+            <p class="hint">Example: https://techpure.dev/RS3QuestBuddy/appconfig.prod.json</p>
+            <p style="margin-top: 12px;">Custom display name (optional):</p>
+            <input type="text" class="input" id="appDisplayNameInput" placeholder="e.g., AfkWarden (Dev)">
+            <p class="hint">Leave blank to use the app's default name</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn" id="cancelAddApp">Cancel</button>
+            <button class="btn btn-primary" id="confirmAddApp">Add App</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- GE Prices Tab -->
+    <div class="tab-content" id="tab-ge">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Grand Exchange Price Checker</span>
+        </div>
+        <div class="ge-search-container">
+          <div class="ge-search-wrapper">
+            <input type="text" class="ge-search-input" id="geSearchInput" placeholder="Search for an item..." autocomplete="off">
+            <div class="ge-search-dropdown" id="geSearchDropdown" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="ge-empty" id="geEmpty">
+          <div class="ge-empty-icon">&#x1F4B0;</div>
+          <p>Search for any item to see its Grand Exchange price, history, and wiki details.</p>
+        </div>
+
+        <!-- Loading -->
+        <div class="ge-loading" id="geLoading" style="display: none;">
+          <p>Loading item data...</p>
+        </div>
+
+        <!-- Error -->
+        <div class="ge-error" id="geError" style="display: none;">
+          <p id="geErrorText">Item not found.</p>
+        </div>
+
+        <!-- Result -->
+        <div class="ge-result" id="geResult" style="display: none;">
+          <!-- Item Header Card -->
+          <div class="ge-item-card" id="geItemCard">
+            <div class="ge-item-header">
+              <img class="ge-item-image" id="geItemImage" src="" alt="">
+              <div class="ge-item-info">
+                <div class="ge-item-name" id="geItemName"></div>
+                <div class="ge-item-id" id="geItemId"></div>
+              </div>
+              <span class="ge-wiki-link" id="geWikiLink" title="View on RS Wiki">&#x1F517;</span>
+            </div>
+            <div class="ge-price-display">
+              <div class="ge-price-label">Current Price</div>
+              <div class="ge-price-value" id="gePrice"></div>
+              <div class="ge-price-meta" id="gePriceMeta"></div>
+            </div>
+          </div>
+
+          <!-- Price Chart -->
+          <div class="ge-chart-card">
+            <div class="ge-chart-header">
+              <span class="ge-chart-title">90-Day Price History</span>
+            </div>
+            <canvas class="ge-chart-canvas" id="geChartCanvas" width="560" height="160"></canvas>
+          </div>
+
+          <!-- Recent Reports (from GEPrices.com) -->
+          <div class="ge-reports-card" id="geReportsCard" style="display: none;">
+            <div class="ge-reports-header">Recent Reports</div>
+            <div class="ge-reports-list" id="geReportsList"></div>
+          </div>
+
+          <!-- Item Description -->
+          <div class="ge-description-card" id="geDescriptionCard" style="display: none;">
+            <div class="ge-description-title">About this item</div>
+            <p class="ge-description-text" id="geDescriptionText"></p>
+          </div>
+        </div>
+
+        <div class="data-attribution">Price data provided by <span class="attribution-link" data-url="https://geprice.com">GE Price</span> &amp; <span class="attribution-link" data-url="https://api.weirdgloop.org">Weird Gloop API</span> | Item data from <span class="attribution-link" data-url="https://runescape.wiki">RuneScape Wiki</span></div>
+      </div>
+    </div>
+
+    <!-- Highscores Tab -->
+    <div class="tab-content" id="tab-highscores">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Player Lookup</span>
+        </div>
+        <div class="hiscores-search">
+          <input type="text" class="input" id="hiscoresPlayerInput" placeholder="Enter player name...">
+          <button class="btn btn-primary" id="hiscoresSearchBtn">Search</button>
+        </div>
+        <div id="hiscoresResult" style="display: none;">
+          <div class="hiscores-player-header" id="hiscoresPlayerHeader"></div>
+          <div class="hiscores-grid" id="hiscoresGrid"></div>
+        </div>
+        <div class="hiscores-empty" id="hiscoresEmpty">
+          <span class="text-muted">Search for a player to view their stats</span>
+        </div>
+        <div class="hiscores-error" id="hiscoresError" style="display: none;"></div>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div class="tab-content" id="tab-settings">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">General</span>
+        </div>
+        <div class="settings-list">
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-label">Launch on Startup</span>
+              <span class="setting-value text-muted">Automatically start when your computer boots up</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="launchOnStartup">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar Profiles -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Toolbar Profiles</span>
+          <button class="btn btn-small" id="createProfileBtn">+ New Profile</button>
+        </div>
+        <div class="settings-list" id="profilesList">
+          <div class="no-profiles" id="noProfiles">
+            <span class="text-muted">Loading profiles...</span>
+          </div>
+          <!-- Profile cards populated dynamically -->
+        </div>
+        <div class="profile-assignments" id="profileAssignments">
+          <div class="section-header" style="padding-top: 8px;">
+            <span class="section-title" style="font-size: 12px;">Character Assignments</span>
+          </div>
+          <div class="settings-list" id="assignmentsList">
+            <div class="no-assignments" id="noAssignments">
+              <span class="text-muted">No characters assigned to profiles yet. Connect a game client and assign a profile.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create/Rename Profile Modal -->
+      <div class="modal" id="profileModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <span id="profileModalTitle">Create Profile</span>
+            <button class="modal-close" id="closeProfileModal">&#x2715;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="profileNameInput">Profile Name</label>
+              <input type="text" id="profileNameInput" placeholder="e.g., Main, Alt, Skiller" maxlength="30" class="text-input">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn" id="cancelProfile">Cancel</button>
+            <button class="btn btn-primary" id="confirmProfile">Create</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assign Profile Modal -->
+      <div class="modal" id="assignProfileModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <span id="assignProfileModalTitle">Assign Profile</span>
+            <button class="modal-close" id="closeAssignProfileModal">&#x2715;</button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted" id="assignProfileDescription">Select a profile for this client:</p>
+            <div class="profile-select-list" id="profileSelectList">
+              <!-- Profile options populated dynamically -->
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn" id="cancelAssignProfile">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header collapsible" id="hotkeysHeader">
+          <span class="section-title">Hotkeys</span>
+          <span class="collapse-icon">&#x25BC;</span>
+        </div>
+        <div class="section-content" id="hotkeysContent">
+          <div class="settings-list">
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">Enable Hotkeys</span>
+                <span class="setting-value text-muted">Allow apps to register global hotkeys</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="hotkeysEnabled" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-label">Only When RS Focused</span>
+                <span class="setting-value text-muted">Only trigger hotkeys when RS window is active</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="hotkeysOnlyWhenFocused" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="hotkeys-apps-list" id="hotkeysAppsList">
+            <div class="no-hotkeys" id="noHotkeys">
+              <span class="text-muted">No hotkeys registered. Launch an app with hotkey support to see them here.</span>
+            </div>
+            <!-- App buttons populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Hotkey Manager Modal -->
+      <div class="modal" id="hotkeyManagerModal">
+        <div class="modal-content modal-wide">
+          <div class="modal-header">
+            <span id="hotkeyManagerTitle">App Hotkeys</span>
+            <button class="modal-close" id="closeHotkeyManager">&#x2715;</button>
+          </div>
+          <div class="modal-body">
+            <div class="hotkeys-modal-list" id="hotkeyManagerList">
+              <!-- Hotkeys for selected app populated dynamically -->
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn" id="hotkeyManagerClose">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Theme</span>
+        </div>
+        <div class="theme-selector">
+          <button class="theme-btn active" data-theme="dark">Dark</button>
+          <button class="theme-btn" data-theme="light">Light</button>
+          <button class="theme-btn" data-theme="runescape">RuneScape</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">About</span>
+        </div>
+        <div class="about-info" style="line-height: 1.6;">
+          <p style="font-weight: 600; margin-bottom: 8px;">RS3 Launcher Buddy <span style="color: #b08a00; font-size: 11px;">(Beta)</span></p>
+          <p class="text-muted" style="margin-bottom: 8px;">This launcher does not replace Alt1. Its use is similar but has different aspects and feels. You can use Alt1 apps with this launcher, but not all apps may be supported at this time.</p>
+          <p class="text-muted" style="margin-bottom: 8px;">Skillbert has worked tirelessly to bring something worthwhile to the RuneScape community. This launcher is simply the shell around what his brilliance built inside. The Linux version was conceived and developed independently by Techpure.</p>
+          <p class="text-muted" style="font-size: 11px; margin-top: 12px; opacity: 0.7;">Made by players, for players. Not affiliated with or endorsed by Jagex Ltd.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>RS3 Launcher Buddy</span>
+      <span class="footer-disclaimer">Not affiliated with or endorsed by Jagex Ltd. Made by players, for players.</span>
+    </div>
+
+    <!-- GL Overlay Confirmation Modal -->
+    <div class="modal" id="glOverlayConfirmModal">
+      <div class="modal-content">
+        <div class="modal-header" style="background: linear-gradient(135deg, #b08a00 0%, #8a6d00 100%);">
+          <span>Enable GL Overlay</span>
+          <button class="modal-close" id="closeGlOverlayModal">&#x2715;</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 12px;">You are about to enable the OpenGL overlay injection system.</p>
+          <p style="margin-bottom: 12px; color: #b08a00;"><strong>This method of OpenGL injection has not been specifically approved or denied by Jagex for use.</strong></p>
+          <p style="margin-bottom: 12px;">This injects overlay and GL hook libraries into the RuneScape client process to enable features like the in-game toolbar, screen capture, render recording, and NPC detection.</p>
+          <p>Are you sure you want to enable this?</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" id="glOverlayCancel">Cancel</button>
+          <button class="btn btn-primary" id="glOverlayConfirm">Yes, Enable</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Install Jagex Launcher Modal (outside tabs so it's always accessible) -->
+    <div class="modal" id="installLauncherModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span>Install Jagex Launcher</span>
+          <button class="modal-close" id="closeInstallModal">&#x2715;</button>
+        </div>
+        <div class="modal-body">
+          <div id="installLauncherMessage">
+            <p>Jagex Launcher is not installed.</p>
+          </div>
+          <div class="install-progress" id="installLauncherProgress" style="display: none;">
+            Installing...
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" id="installFlatpakBtn">Install via Flatpak</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hotkey Conflict Resolution Modal -->
+    <div class="modal" id="hotkeyConflictModal">
+      <div class="modal-content">
+        <div class="modal-header" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">
+          <span>Hotkey Conflict</span>
+          <button class="modal-close" id="closeHotkeyConflictModal">&#x2715;</button>
+        </div>
+        <div class="modal-body">
+          <p id="hotkeyConflictMessage">
+            <strong id="conflictOriginalKey">Ctrl+A</strong> is already used by
+            <strong id="conflictAppName">App Name</strong>.
+          </p>
+          <p id="hotkeyAlternativeMessage" style="margin-top: 12px;">
+            Would you like to use <strong id="conflictAlternativeKey" style="color: #4caf50;">Alt+A</strong> instead?
+          </p>
+          <p id="hotkeyNoAlternativeMessage" style="margin-top: 12px; display: none; color: #ff5252;">
+            No alternative key combinations are available. Please open settings to reassign hotkeys.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" id="hotkeyConflictSettings">Open Settings</button>
+          <button class="btn btn-primary" id="hotkeyConflictAccept">Use Alternative</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="launcherRenderer.js"></script>
+</body>
+</html>

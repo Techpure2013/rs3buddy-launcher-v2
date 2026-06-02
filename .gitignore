@@ -1,0 +1,74 @@
+# Dependencies
+node_modules/
+package-lock.json
+.omc
+# Build outputs
+/dist/
+# NOTE: launcher/dist/ is NOT gitignored here - electron-builder walks up the
+# directory tree for .gitignore patterns and would exclude dist/ from the asar.
+# Use .git/info/exclude locally if you want to hide launcher/dist/ from git status.
+packages/*/dist/
+release/
+out/
+*.js.map
+.research/
+# Built-in apps: in rs3buddy-launcher-v2 these are tracked seed content (the
+# stripped shell ships with them), unlike the old repo where they were generated.
+# launcher/builtin-apps/   (intentionally NOT ignored)
+build_injected.bat
+# Native addon build artifacts
+build/
+*.node
+*.dll
+*.lib
+*.exp
+*.pdb
+*.obj
+*.iobj
+*.ipdb
+dist/
+# Electron builder
+.icon-ico/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+updater.test.ts
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Credentials (never commit these!)
+credentials.json
+*.pem
+*.key
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Test coverage
+coverage/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Claude
+.claude/
+CLAUDE.md
+Claude
+CLAUDE_CONTEXT.md

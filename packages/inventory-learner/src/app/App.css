@@ -1,0 +1,353 @@
+.app-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #252525;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.app-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.connected { background: #4caf50; }
+.status-dot.disconnected { background: #f44336; }
+
+.server-toggle {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background: #333;
+  color: #eee;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.server-toggle:hover { background: #444; }
+.server-toggle.local { border-color: #ff9800; color: #ff9800; }
+.server-toggle.prod { border-color: #4caf50; color: #4caf50; }
+
+/* Tabs */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-bottom: 2px solid #333;
+}
+
+.tab-btn {
+  padding: 8px 20px;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 14px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover { color: #ccc; }
+.tab-btn.active {
+  color: #fff;
+  border-bottom-color: #2196f3;
+}
+
+/* Cards/Panels */
+.panel {
+  background: #252525;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.btn-primary { background: #2196f3; color: white; }
+.btn-primary:hover { background: #1976d2; }
+.btn-primary:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+.btn-success { background: #4caf50; color: white; }
+.btn-success:hover { background: #388e3c; }
+
+.btn-danger { background: #f44336; color: white; }
+.btn-danger:hover { background: #d32f2f; }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #555;
+  color: #ccc;
+}
+.btn-outline:hover { background: #333; }
+
+/* Inventory Grid */
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 12px 0;
+}
+
+.inventory-slot {
+  aspect-ratio: 1;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #666;
+  position: relative;
+  overflow: hidden;
+}
+
+.inventory-slot.has-item {
+  border-color: #4caf50;
+  color: #4caf50;
+}
+
+.inventory-slot.detected {
+  border-color: #2196f3;
+  background: rgba(33, 150, 243, 0.1);
+}
+
+/* Learned Items List */
+.item-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #333;
+  gap: 12px;
+}
+
+.item-row:hover { background: #2a2a2a; }
+
+.item-name { flex: 1; font-size: 14px; }
+
+.item-hash {
+  font-family: monospace;
+  font-size: 11px;
+  color: #888;
+}
+
+.item-confidence {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #333;
+}
+
+.item-source {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.item-source.tooltip { background: #1b5e20; color: #81c784; }
+.item-source.database { background: #0d47a1; color: #64b5f6; }
+.item-source.manual { background: #4a148c; color: #ce93d8; }
+
+/* Calibration */
+.calibration-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.calibration-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.calibration-badge.active { background: #1b5e20; color: #81c784; }
+.calibration-badge.inactive { background: #333; color: #888; }
+
+.calibration-progress {
+  width: 100%;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.calibration-progress-bar {
+  height: 100%;
+  background: #2196f3;
+  transition: width 0.3s;
+}
+
+.calibration-slot-display {
+  text-align: center;
+  padding: 24px;
+  background: #1a1a1a;
+  border: 2px solid #2196f3;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.calibration-slot-display .slot-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2196f3;
+}
+
+.calibration-slot-display .slot-label {
+  font-size: 14px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.countdown-ring {
+  font-size: 48px;
+  font-weight: 700;
+  color: #ff9800;
+  text-align: center;
+  margin: 16px 0;
+}
+
+/* Stats */
+.stats-row {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.stat-card {
+  flex: 1;
+  background: #1a1a1a;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2196f3;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #888;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+/* Search */
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #eee;
+  font-size: 14px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #2196f3;
+}
+
+/* Profile list */
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.profile-item.active {
+  border: 1px solid #4caf50;
+}
+
+/* Detection log */
+.detection-log {
+  background: #1a1a1a;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #aaa;
+  min-height: 40px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+/* Utility */
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.text-sm { font-size: 12px; }
+.text-muted { color: #888; }
+.text-center { text-align: center; }
+.mono { font-family: monospace; }

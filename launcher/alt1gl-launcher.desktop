@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=RS3 Launcher Buddy
+Comment=RS3 Launcher Buddy for RuneScape
+Exec=electron /home/techpure/Desktop/Alt1Launcher/launcher --class=rs3-launcher-buddy
+Icon=/home/techpure/Desktop/Alt1Launcher/launcher/assets/icon.png
+Terminal=false
+Type=Application
+Categories=Game;
+StartupWMClass=rs3-launcher-buddy

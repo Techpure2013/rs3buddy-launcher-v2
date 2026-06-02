@@ -1,0 +1,16 @@
+{
+  "appName": "Instance Tile Mapper",
+  "description": "Map instanced quest area tiles to public map coordinates. Scan floor renders, discover chunks, and create coordinate mappings.",
+  "appUrl": "index.html",
+  "iconUrl": "",
+  "defaultWidth": 1400,
+  "defaultHeight": 900,
+  "minWidth": 900,
+  "minHeight": 600,
+  "permissions": {
+    "pixel": true,
+    "gamestate": true,
+    "overlay": true,
+    "files": true
+  }
+}
