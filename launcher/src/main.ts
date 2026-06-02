@@ -17,6 +17,7 @@ import type { BrowserWindow as BrowserWindowType } from 'electron';
 import { initDataDir, detectPaths, getConfig, saveConfig, getSessions, removeSession, saveCredentials, saveClientState, loadClientState, removeClientState, cleanupStaleClientStates } from './config';
 import { setProcessCallbacks, startProcessMonitor, stopProcessMonitor, getPendingLaunch, clearPendingLaunch, getAllRs2ClientPids, setAutoInject, setUseOverlay, doesOverlayPipeExist, markPidInjected } from './game';
 import { cleanupLegacyDllCopies, tryConnectToExistingClient, injectIntoProcess, isInjected, isInjectedPid, reconnectToOverlay } from './inject';
+import { engineController } from './engine';
 import {
   createMainWindow,
   getMainWindow,
@@ -284,6 +285,19 @@ function initialize(): void {
       saveConfig();
     } catch (e) {
       console.error('[Main] Failed to save injection settings:', e);
+    }
+
+    // Drive the rs3buddy-api engine (child process) off the same toggle.
+    // OFF => detach (off means off — no engine process at all).
+    if (!enabled) {
+      void engineController.disableEngine();
+    } else {
+      const enginePids = getAllRs2ClientPids();
+      if (enginePids.length > 0) {
+        void engineController.enableEngine(enginePids[0]).then((s) => {
+          if (s.error) console.warn('[Main] Engine attach error:', s.error);
+        });
+      }
     }
 
     // If just enabled, immediately inject/reconnect all existing RS clients
