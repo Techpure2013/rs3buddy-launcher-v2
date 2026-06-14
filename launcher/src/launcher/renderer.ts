@@ -184,6 +184,13 @@ interface Elements {
   geReportsList: HTMLElement | null;
   geDescriptionCard: HTMLElement | null;
   geDescriptionText: HTMLElement | null;
+  // Developer SDK tab
+  sdkVersion: HTMLElement | null;
+  sdkLoading: HTMLElement | null;
+  sdkError: HTMLElement | null;
+  sdkErrorText: HTMLElement | null;
+  sdkRetryBtn: HTMLButtonElement | null;
+  sdkClientsList: HTMLElement | null;
 }
 
 // Get DOM elements
@@ -323,6 +330,13 @@ const elements: Elements = {
   geReportsList: document.getElementById('geReportsList'),
   geDescriptionCard: document.getElementById('geDescriptionCard'),
   geDescriptionText: document.getElementById('geDescriptionText'),
+  // Developer SDK tab
+  sdkVersion: document.getElementById('sdkVersion'),
+  sdkLoading: document.getElementById('sdkLoading'),
+  sdkError: document.getElementById('sdkError'),
+  sdkErrorText: document.getElementById('sdkErrorText'),
+  sdkRetryBtn: document.getElementById('sdkRetryBtn') as HTMLButtonElement | null,
+  sdkClientsList: document.getElementById('sdkClientsList'),
 };
 
 // Initialize
@@ -358,6 +372,9 @@ async function init(): Promise<void> {
   // downloads/installs at startup. Auto-dismisses on completion; no banner if the
   // engine is already up to date.
   setupEngineUpdateBanner();
+
+  // Developer SDK: listen for per-client download progress.
+  setupSdkDownloadProgress();
 
   // Display app version
   window.api.getAppVersion().then(v => {
@@ -792,8 +809,18 @@ function setupEventListeners(): void {
       const tabId = btn.dataset.tab;
       if (tabId) {
         document.getElementById(`tab-${tabId}`)?.classList.add('active');
+        // Lazy-load the SDK client manifest the first time the tab is opened.
+        if (tabId === 'sdk') {
+          loadSdkManifestOnce();
+        }
       }
     });
+  });
+
+  // Developer SDK: retry manifest load
+  elements.sdkRetryBtn?.addEventListener('click', () => {
+    sdkManifestLoaded = false;
+    loadSdkManifestOnce();
   });
 
   // Login
@@ -2980,6 +3007,185 @@ function showHiscoresError(message: string): void {
   }
   if (elements.hiscoresResult) elements.hiscoresResult.style.display = 'none';
   if (elements.hiscoresEmpty) elements.hiscoresEmpty.style.display = 'none';
+}
+
+// ============================================================================
+// Developer SDK tab — client library manifest + download/extract
+// ============================================================================
+
+// Manifest entry shape (mirrors launcher/src/sdk.ts).
+interface SdkClientEntry {
+  id: string;
+  label: string;
+  file: string;
+  bytes?: number;
+  sha256?: string;
+  install: string;
+  snippet: string;
+}
+
+// Guard so the manifest only auto-loads once (refreshable via the Retry button).
+let sdkManifestLoaded = false;
+// Cache the entries so the download handler can look them up by id.
+let sdkClients: SdkClientEntry[] = [];
+
+// (escapeHtml is defined once globally above and reused here.)
+
+// Show one of the three SDK states: 'loading' | 'error' | 'list'.
+function setSdkState(state: 'loading' | 'error' | 'list', errorMsg?: string): void {
+  if (elements.sdkLoading) elements.sdkLoading.style.display = state === 'loading' ? 'block' : 'none';
+  if (elements.sdkError) elements.sdkError.style.display = state === 'error' ? 'block' : 'none';
+  if (elements.sdkClientsList) elements.sdkClientsList.style.display = state === 'list' ? 'flex' : 'none';
+  if (state === 'error' && elements.sdkErrorText) {
+    elements.sdkErrorText.textContent = errorMsg || 'Could not load the client manifest.';
+  }
+}
+
+// Load the manifest once (lazy, on first SDK tab open). Re-entrant-safe.
+async function loadSdkManifestOnce(): Promise<void> {
+  if (sdkManifestLoaded) return;
+  sdkManifestLoaded = true;
+  await loadSdkManifest();
+}
+
+// Fetch + render the clients manifest. Friendly inline error on any failure.
+async function loadSdkManifest(): Promise<void> {
+  setSdkState('loading');
+  try {
+    const res = await window.api.sdk.getManifest();
+    if (!res.ok || !res.manifest) {
+      // Surface the configured URL when it's still the placeholder, so the dev
+      // knows exactly what to set.
+      const hint = res.placeholder
+        ? ' Set MANIFEST_URL in launcher/src/sdk.ts to the public release URL.'
+        : '';
+      setSdkState('error', (res.error || 'Could not load the client manifest.') + hint);
+      return;
+    }
+    const manifest = res.manifest;
+    sdkClients = manifest.clients || [];
+    if (elements.sdkVersion) {
+      elements.sdkVersion.textContent = manifest.clientsVersion
+        ? `clients v${manifest.clientsVersion}`
+        : '';
+    }
+    renderSdkClients(sdkClients);
+  } catch (e) {
+    console.error('[SDK] Manifest load failed:', e);
+    setSdkState('error', 'Failed to load the client manifest. You may be offline.');
+  }
+}
+
+// Render one card per client entry.
+function renderSdkClients(clients: SdkClientEntry[]): void {
+  if (!elements.sdkClientsList) return;
+  if (!clients.length) {
+    setSdkState('error', 'The manifest did not list any clients.');
+    return;
+  }
+
+  elements.sdkClientsList.innerHTML = clients
+    .map(
+      (c) => `
+      <div class="sdk-card" data-client-id="${escapeHtml(c.id)}">
+        <div class="sdk-card-header">
+          <span class="sdk-card-label">${escapeHtml(c.label)}</span>
+        </div>
+        <div class="sdk-card-install">${escapeHtml(c.install)}</div>
+        <pre class="sdk-snippet">${escapeHtml(c.snippet)}</pre>
+        <div class="sdk-card-actions">
+          <button class="btn btn-primary btn-small sdk-download-btn" data-client-id="${escapeHtml(c.id)}">Download</button>
+          <span class="sdk-card-status" data-status-for="${escapeHtml(c.id)}"></span>
+        </div>
+      </div>`,
+    )
+    .join('');
+
+  // Wire each Download button.
+  elements.sdkClientsList
+    .querySelectorAll<HTMLButtonElement>('.sdk-download-btn')
+    .forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.clientId;
+        if (id) downloadSdkClient(id);
+      });
+    });
+
+  setSdkState('list');
+}
+
+// Find a card's inline status element by client id.
+function sdkStatusEl(id: string): HTMLElement | null {
+  return elements.sdkClientsList?.querySelector<HTMLElement>(`[data-status-for="${CSS.escape(id)}"]`) || null;
+}
+
+// Download + extract flow: pick folder -> download+extract -> show success + snippet.
+async function downloadSdkClient(id: string): Promise<void> {
+  const entry = sdkClients.find((c) => c.id === id);
+  if (!entry) return;
+
+  const card = elements.sdkClientsList?.querySelector<HTMLElement>(`.sdk-card[data-client-id="${CSS.escape(id)}"]`);
+  const btn = card?.querySelector<HTMLButtonElement>('.sdk-download-btn') || null;
+  const status = sdkStatusEl(id);
+
+  const setStatus = (text: string, cls: '' | 'success' | 'error' = '') => {
+    if (!status) return;
+    status.textContent = text;
+    status.className = 'sdk-card-status' + (cls ? ' ' + cls : '');
+  };
+
+  // 1) Native directory picker.
+  let destDir: string | null = null;
+  try {
+    destDir = await window.api.sdk.pickDirectory();
+  } catch (e) {
+    setStatus('Could not open the folder picker.', 'error');
+    return;
+  }
+  if (!destDir) {
+    // User cancelled — leave the card as-is.
+    return;
+  }
+
+  // 2) Download + extract.
+  if (btn) btn.disabled = true;
+  setStatus('Starting download...', '');
+
+  try {
+    const result = await window.api.sdk.downloadClient(entry, destDir);
+    if (result.success && result.folder) {
+      // 3) Success: show folder path + the snippet again as a copy-ready reminder.
+      const existing = card?.querySelector('.sdk-card-success');
+      if (existing) existing.remove();
+      if (card) {
+        const box = document.createElement('div');
+        box.className = 'sdk-card-success';
+        box.innerHTML =
+          `Extracted to <span class="sdk-success-path">${escapeHtml(result.folder)}</span>` +
+          `<pre class="sdk-snippet" style="margin-top:8px;">${escapeHtml(entry.snippet)}</pre>`;
+        card.appendChild(box);
+      }
+      setStatus('Done', 'success');
+    } else {
+      setStatus(result.error || 'Download failed.', 'error');
+    }
+  } catch (e) {
+    console.error('[SDK] Download failed:', e);
+    setStatus('Download failed. Please try again.', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Update the per-card status text with live download progress (0..1).
+function setupSdkDownloadProgress(): void {
+  window.api.sdk.onDownloadProgress(({ id, fraction }) => {
+    const status = sdkStatusEl(id);
+    if (!status) return;
+    const pct = Math.round((fraction ?? 0) * 100);
+    status.textContent = `Downloading... ${pct}%`;
+    status.className = 'sdk-card-status';
+  });
 }
 
 // Engine auto-update progress banner. Creates a small fixed bottom bar on the

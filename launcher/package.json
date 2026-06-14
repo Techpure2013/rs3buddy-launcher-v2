@@ -86,6 +86,7 @@
     "vitest": "^4.1.2"
   },
   "dependencies": {
-    "active-win": "^8.2.1"
+    "active-win": "^8.2.1",
+    "extract-zip": "^2.0.1"
   }
 }

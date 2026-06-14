@@ -44,6 +44,13 @@ import {
   runJagexLauncherInstaller,
   getJagexLauncherInstallInstructions
 } from './download';
+import {
+  fetchClientsManifest,
+  downloadAndExtractClient,
+  MANIFEST_URL,
+  isManifestUrlPlaceholder,
+  type ClientManifestEntry
+} from './sdk';
 import { fetchAppConfig } from './utils';
 import {
   getMainWindow,
@@ -204,6 +211,47 @@ export function initIpcHandlers(): void {
   // Get cached game path
   ipcMain.handle('get-cached-game', () => {
     return getCachedGamePath();
+  });
+
+  // ============================================
+  // Developer SDK tab — client library manifest + download/extract
+  // ============================================
+
+  // Fetch the clients manifest. Returns { ok, manifest } or { ok:false, error }.
+  ipcMain.handle('sdk:get-manifest', async () => {
+    try {
+      const manifest = await fetchClientsManifest();
+      return { ok: true, manifest, manifestUrl: MANIFEST_URL, placeholder: isManifestUrlPlaceholder() };
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+        manifestUrl: MANIFEST_URL,
+        placeholder: isManifestUrlPlaceholder()
+      };
+    }
+  });
+
+  // Open a native directory picker; returns the chosen folder or null if cancelled.
+  ipcMain.handle('sdk:pick-directory', async () => {
+    const { dialog } = require('electron');
+    const mainWindow = getMainWindow();
+    const result = await dialog.showOpenDialog(mainWindow || undefined, {
+      title: 'Choose a folder to extract the client into',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  });
+
+  // Download + extract a client zip into the chosen folder. Reports progress over
+  // the 'sdk:download-progress' channel; returns { success, folder } or { success:false, error }.
+  ipcMain.handle('sdk:download-client', async (_event: IpcMainInvokeEvent, entry: ClientManifestEntry, destDir: string) => {
+    return downloadAndExtractClient(entry, destDir, (fraction) => {
+      sendToMainWindow('sdk:download-progress', { id: entry.id, fraction });
+    });
   });
 
   // ============================================

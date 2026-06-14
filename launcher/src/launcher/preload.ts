@@ -28,6 +28,35 @@ interface JagexLauncherStatus {
   path?: string;
 }
 
+// Developer SDK client manifest types (mirror launcher/src/sdk.ts)
+interface SdkClientEntry {
+  id: string;
+  label: string;
+  file: string;
+  bytes?: number;
+  sha256?: string;
+  install: string;
+  snippet: string;
+}
+interface SdkManifest {
+  schemaVersion: number;
+  clientsVersion: string;
+  generatedAt?: string;
+  clients: SdkClientEntry[];
+}
+interface SdkManifestResult {
+  ok: boolean;
+  manifest?: SdkManifest;
+  error?: string;
+  manifestUrl: string;
+  placeholder: boolean;
+}
+interface SdkDownloadResult {
+  success: boolean;
+  folder?: string;
+  error?: string;
+}
+
 // Define the main window API interface
 interface LauncherRendererAPI {
   // Build info
@@ -74,6 +103,14 @@ interface LauncherRendererAPI {
     downloadWindows(): Promise<{ success: boolean; installerPath?: string; error?: string }>;
     runInstaller(installerPath: string): Promise<{ success: boolean; error?: string }>;
     onInstallProgress(callback: (data: { message: string; progress?: number }) => void): () => void;
+  };
+
+  // Developer SDK tab
+  sdk: {
+    getManifest(): Promise<SdkManifestResult>;
+    pickDirectory(): Promise<string | null>;
+    downloadClient(entry: SdkClientEntry, destDir: string): Promise<SdkDownloadResult>;
+    onDownloadProgress(callback: (data: { id: string; fraction: number }) => void): () => void;
   };
 
   // Window controls
@@ -234,6 +271,16 @@ const api: LauncherRendererAPI = {
     runInstaller: (installerPath: string) => ipcRenderer.invoke('jagex-launcher:run-installer', installerPath),
     onInstallProgress: (callback) =>
       createEventListener('jagex-launcher:install-progress', callback),
+  },
+
+  // Developer SDK tab
+  sdk: {
+    getManifest: () => ipcRenderer.invoke('sdk:get-manifest'),
+    pickDirectory: () => ipcRenderer.invoke('sdk:pick-directory'),
+    downloadClient: (entry: SdkClientEntry, destDir: string) =>
+      ipcRenderer.invoke('sdk:download-client', entry, destDir),
+    onDownloadProgress: (callback) =>
+      createEventListener('sdk:download-progress', callback),
   },
 
   // Window controls

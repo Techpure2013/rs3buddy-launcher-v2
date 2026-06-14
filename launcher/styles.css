@@ -1979,3 +1979,113 @@ body {
 }
 #engine-update-banner .eub-bar { flex: 1; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
 #engine-update-banner .eub-fill { height: 100%; width: 0%; background: #4a9eff; transition: width .2s ease; }
+
+/* ============================================
+   Developer SDK Tab
+   ============================================ */
+.sdk-version {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'Consolas', monospace;
+}
+
+.sdk-status {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.sdk-error {
+  color: var(--error, #ef4444);
+}
+
+.sdk-clients {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sdk-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  padding: 14px;
+}
+
+.sdk-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.sdk-card-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sdk-card-install {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.sdk-snippet {
+  display: block;
+  padding: 10px;
+  background: var(--bg-primary, #0f1117);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-primary);
+  margin: 0;
+  overflow-x: auto;
+}
+
+.sdk-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.sdk-download-btn {
+  flex-shrink: 0;
+}
+
+/* Inline per-card status (progress / success / error) */
+.sdk-card-status {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.sdk-card-status.success {
+  color: var(--success, #4ade80);
+}
+
+.sdk-card-status.error {
+  color: var(--error, #ef4444);
+}
+
+.sdk-card-success {
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--bg-primary, #0f1117);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  font-size: 11px;
+}
+
+.sdk-card-success .sdk-success-path {
+  font-family: 'Consolas', monospace;
+  color: var(--success, #4ade80);
+  word-break: break-all;
+}

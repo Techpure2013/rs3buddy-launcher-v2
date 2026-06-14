@@ -31,6 +31,7 @@
       <button class="tab-btn" data-tab="apps">Apps</button>
       <button class="tab-btn" data-tab="ge">GE Prices</button>
       <button class="tab-btn" data-tab="highscores">Highscores</button>
+      <button class="tab-btn" data-tab="sdk">SDK</button>
       <button class="tab-btn" data-tab="settings">Settings</button>
     </div>
 
@@ -222,6 +223,34 @@
           <span class="text-muted">Search for a player to view their stats</span>
         </div>
         <div class="hiscores-error" id="hiscoresError" style="display: none;"></div>
+      </div>
+    </div>
+
+    <!-- Developer SDK Tab -->
+    <div class="tab-content" id="tab-sdk">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Developer SDK</span>
+          <span class="sdk-version" id="sdkVersion"></span>
+        </div>
+        <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">
+          Download the rs3buddy client library for your language. Each download fetches the
+          package and extracts it into a folder you choose.
+        </p>
+
+        <!-- Loading -->
+        <div class="sdk-status" id="sdkLoading">
+          <p>Loading available clients...</p>
+        </div>
+
+        <!-- Error / offline / URL-not-set -->
+        <div class="sdk-status sdk-error" id="sdkError" style="display: none;">
+          <p id="sdkErrorText">Could not load the client manifest.</p>
+          <button class="btn btn-small" id="sdkRetryBtn" style="margin-top: 10px;">Retry</button>
+        </div>
+
+        <!-- Client cards (populated dynamically) -->
+        <div class="sdk-clients" id="sdkClientsList" style="display: none;"></div>
       </div>
     </div>
 
