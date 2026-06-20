@@ -79,6 +79,13 @@ var api = {
     runInstaller: (installerPath) => import_electron.ipcRenderer.invoke("jagex-launcher:run-installer", installerPath),
     onInstallProgress: (callback) => createEventListener("jagex-launcher:install-progress", callback)
   },
+  // Developer SDK tab
+  sdk: {
+    getManifest: () => import_electron.ipcRenderer.invoke("sdk:get-manifest"),
+    pickDirectory: () => import_electron.ipcRenderer.invoke("sdk:pick-directory"),
+    downloadClient: (entry, destDir) => import_electron.ipcRenderer.invoke("sdk:download-client", entry, destDir),
+    onDownloadProgress: (callback) => createEventListener("sdk:download-progress", callback)
+  },
   // Window controls
   minimizeWindow: () => import_electron.ipcRenderer.invoke("minimize-window"),
   closeWindow: () => import_electron.ipcRenderer.invoke("close-window"),

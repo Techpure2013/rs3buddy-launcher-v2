@@ -158,7 +158,14 @@
     geReportsCard: document.getElementById("geReportsCard"),
     geReportsList: document.getElementById("geReportsList"),
     geDescriptionCard: document.getElementById("geDescriptionCard"),
-    geDescriptionText: document.getElementById("geDescriptionText")
+    geDescriptionText: document.getElementById("geDescriptionText"),
+    // Developer SDK tab
+    sdkVersion: document.getElementById("sdkVersion"),
+    sdkLoading: document.getElementById("sdkLoading"),
+    sdkError: document.getElementById("sdkError"),
+    sdkErrorText: document.getElementById("sdkErrorText"),
+    sdkRetryBtn: document.getElementById("sdkRetryBtn"),
+    sdkClientsList: document.getElementById("sdkClientsList")
   };
   async function init() {
     await loadConfig();
@@ -179,6 +186,7 @@
     setInterval(loadDailyInfo, 5 * 60 * 1e3);
     window.api.onRefreshDailyInfo(() => loadDailyInfo());
     setupEngineUpdateBanner();
+    setupSdkDownloadProgress();
     window.api.getAppVersion().then((v) => {
       if (elements.headerVersion)
         elements.headerVersion.textContent = `v${v}`;
@@ -508,8 +516,15 @@
         const tabId = btn.dataset.tab;
         if (tabId) {
           document.getElementById(`tab-${tabId}`)?.classList.add("active");
+          if (tabId === "sdk") {
+            loadSdkManifestOnce();
+          }
         }
       });
+    });
+    elements.sdkRetryBtn?.addEventListener("click", () => {
+      sdkManifestLoaded = false;
+      loadSdkManifestOnce();
     });
     elements.loginBtn?.addEventListener("click", () => {
       window.api.openLogin();
@@ -2234,6 +2249,138 @@
       elements.hiscoresResult.style.display = "none";
     if (elements.hiscoresEmpty)
       elements.hiscoresEmpty.style.display = "none";
+  }
+  var sdkManifestLoaded = false;
+  var sdkClients = [];
+  function setSdkState(state, errorMsg) {
+    if (elements.sdkLoading)
+      elements.sdkLoading.style.display = state === "loading" ? "block" : "none";
+    if (elements.sdkError)
+      elements.sdkError.style.display = state === "error" ? "block" : "none";
+    if (elements.sdkClientsList)
+      elements.sdkClientsList.style.display = state === "list" ? "flex" : "none";
+    if (state === "error" && elements.sdkErrorText) {
+      elements.sdkErrorText.textContent = errorMsg || "Could not load the client manifest.";
+    }
+  }
+  async function loadSdkManifestOnce() {
+    if (sdkManifestLoaded)
+      return;
+    sdkManifestLoaded = true;
+    await loadSdkManifest();
+  }
+  async function loadSdkManifest() {
+    setSdkState("loading");
+    try {
+      const res = await window.api.sdk.getManifest();
+      if (!res.ok || !res.manifest) {
+        const hint = res.placeholder ? " Set MANIFEST_URL in launcher/src/sdk.ts to the public release URL." : "";
+        setSdkState("error", (res.error || "Could not load the client manifest.") + hint);
+        return;
+      }
+      const manifest = res.manifest;
+      sdkClients = manifest.clients || [];
+      if (elements.sdkVersion) {
+        elements.sdkVersion.textContent = manifest.clientsVersion ? `clients v${manifest.clientsVersion}` : "";
+      }
+      renderSdkClients(sdkClients);
+    } catch (e) {
+      console.error("[SDK] Manifest load failed:", e);
+      setSdkState("error", "Failed to load the client manifest. You may be offline.");
+    }
+  }
+  function renderSdkClients(clients) {
+    if (!elements.sdkClientsList)
+      return;
+    if (!clients.length) {
+      setSdkState("error", "The manifest did not list any clients.");
+      return;
+    }
+    elements.sdkClientsList.innerHTML = clients.map(
+      (c) => `
+      <div class="sdk-card" data-client-id="${escapeHtml(c.id)}">
+        <div class="sdk-card-header">
+          <span class="sdk-card-label">${escapeHtml(c.label)}</span>
+        </div>
+        <div class="sdk-card-install">${escapeHtml(c.install)}</div>
+        <pre class="sdk-snippet">${escapeHtml(c.snippet)}</pre>
+        <div class="sdk-card-actions">
+          <button class="btn btn-primary btn-small sdk-download-btn" data-client-id="${escapeHtml(c.id)}">Download</button>
+          <span class="sdk-card-status" data-status-for="${escapeHtml(c.id)}"></span>
+        </div>
+      </div>`
+    ).join("");
+    elements.sdkClientsList.querySelectorAll(".sdk-download-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.clientId;
+        if (id)
+          downloadSdkClient(id);
+      });
+    });
+    setSdkState("list");
+  }
+  function sdkStatusEl(id) {
+    return elements.sdkClientsList?.querySelector(`[data-status-for="${CSS.escape(id)}"]`) || null;
+  }
+  async function downloadSdkClient(id) {
+    const entry = sdkClients.find((c) => c.id === id);
+    if (!entry)
+      return;
+    const card = elements.sdkClientsList?.querySelector(`.sdk-card[data-client-id="${CSS.escape(id)}"]`);
+    const btn = card?.querySelector(".sdk-download-btn") || null;
+    const status = sdkStatusEl(id);
+    const setStatus = (text, cls = "") => {
+      if (!status)
+        return;
+      status.textContent = text;
+      status.className = "sdk-card-status" + (cls ? " " + cls : "");
+    };
+    let destDir = null;
+    try {
+      destDir = await window.api.sdk.pickDirectory();
+    } catch (e) {
+      setStatus("Could not open the folder picker.", "error");
+      return;
+    }
+    if (!destDir) {
+      return;
+    }
+    if (btn)
+      btn.disabled = true;
+    setStatus("Starting download...", "");
+    try {
+      const result = await window.api.sdk.downloadClient(entry, destDir);
+      if (result.success && result.folder) {
+        const existing = card?.querySelector(".sdk-card-success");
+        if (existing)
+          existing.remove();
+        if (card) {
+          const box = document.createElement("div");
+          box.className = "sdk-card-success";
+          box.innerHTML = `Extracted to <span class="sdk-success-path">${escapeHtml(result.folder)}</span><pre class="sdk-snippet" style="margin-top:8px;">${escapeHtml(entry.snippet)}</pre>`;
+          card.appendChild(box);
+        }
+        setStatus("Done", "success");
+      } else {
+        setStatus(result.error || "Download failed.", "error");
+      }
+    } catch (e) {
+      console.error("[SDK] Download failed:", e);
+      setStatus("Download failed. Please try again.", "error");
+    } finally {
+      if (btn)
+        btn.disabled = false;
+    }
+  }
+  function setupSdkDownloadProgress() {
+    window.api.sdk.onDownloadProgress(({ id, fraction }) => {
+      const status = sdkStatusEl(id);
+      if (!status)
+        return;
+      const pct = Math.round((fraction ?? 0) * 100);
+      status.textContent = `Downloading... ${pct}%`;
+      status.className = "sdk-card-status";
+    });
   }
   function setupEngineUpdateBanner() {
     let el = null;
