@@ -45,9 +45,9 @@ const DEFAULT_HOTKEYS_SETTINGS: HotkeysSettings = {
   registeredHotkeys: []
 };
 
-// Built-in apps that are always available (served via alt1-builtin:// protocol)
-// Beta build: only GL Debug App + RS3 Quest Buddy Beta
-// Dev/Editor build: all apps
+// Built-in apps shown in the launcher: HTTP-hosted web apps that consume the
+// rs3buddy-api HTTP engine. (The in-engine alert monitor is part of the engine
+// itself — not a launcher app — so it is not listed here.)
 // BUILD_TYPE is set by build scripts (see build-config.ts)
 import { BUILD_TYPE } from './build-config';
 const IS_BETA_BUILD = BUILD_TYPE === 'beta';
@@ -57,17 +57,22 @@ const IS_BETA_BUILD = BUILD_TYPE === 'beta';
 // are being replaced by new apps that consume the rs3buddy-api HTTP engine.
 // Only HTTP-hosted web apps remain. New apps get added here as they are built.
 const HTTP_APPS: InstalledApp[] = [
+  // Sentinel — AFK-Warden-style alert monitor. A web app built entirely on the
+  // rs3buddy SDK (fetches the engine on :4400; draws the in-game overlay via the
+  // API). DEV: serve apps/monitor on :3100 (from rs3buddy-api:
+  //   npx serve -l 3100 apps/monitor
+  // ). RELEASE: host it (e.g. techpure.dev) and swap the URLs below.
   {
-    appName: 'RS3 Quest Buddy Beta',
-    description: 'Quest guide companion for RuneScape 3 (Beta)',
-    appUrl: 'https://techpure.dev/RS3QuestBuddyBeta/',
-    configUrl: 'https://techpure.dev/RS3QuestBuddyBeta/appconfig.prod.json',
-    iconUrl: 'https://techpure.dev/RS3QuestBuddyBeta/assets/rs3buddyicon.png',
-    defaultWidth: 665,
-    defaultHeight: 603,
-    minWidth: 150,
-    minHeight: 80
-  }
+    appName: 'Sentinel',
+    displayName: 'Sentinel — Alert Monitor',
+    description: 'AFK-Warden-style alert monitor built on the rs3buddy SDK.',
+    appUrl: 'http://localhost:3100/index.html',
+    configUrl: 'http://localhost:3100/appconfig.json',
+    defaultWidth: 460,
+    defaultHeight: 640,
+    minWidth: 360,
+    minHeight: 420,
+  },
 ];
 
 // BETA and ALL builds currently expose the same HTTP app list (no local builtins).
