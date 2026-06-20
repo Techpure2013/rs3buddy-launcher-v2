@@ -87,7 +87,7 @@ function resolveSound(ref) {
 // ── Runtime ──
 const TICK = 250, TOAST = 4500, RENAG = 2500, MAXT = 6, TIP_DX = 18, TIP_DY = 18;
 let running = false, paused = false, timer = null;
-let alerters = [], rt = new Map(), toasts = [], fires = 0, lastNewest = "", lastActivity = 0;
+let alerters = [], rt = new Map(), toasts = [], fires = 0, prevChat = [], lastActivity = 0;
 let curX = 0, curY = 0, curSeq = -1, lastChat = "(none)";
 let cursorTipActive = false, cursorTipSeq = -1, cursorTipSound = null, cursorTipAt = 0;
 // Desktop "tooltip on your mouse" is a NATIVE engine capability: POST /api/tooltip
@@ -97,6 +97,16 @@ let lastDrawKey = "", activeName = null, activeFile = null;
 
 function logln(s) { const el = document.getElementById("log"); el.textContent += s + "\n"; el.scrollTop = el.scrollHeight; }
 const hit = (line, needles) => needles.some((n) => n && line.includes(n));
+// Lines NEW this tick (multiset diff vs last tick) — process each chat message
+// once, on the tick it appears. Robust to NXT fade garbling: a clean capture of a
+// message is a distinct (new) text, so it still registers as fresh and matches.
+function freshLines(prev, cur) {
+  const c = new Map();
+  for (const t of prev) c.set(t, (c.get(t) || 0) + 1);
+  const out = [];
+  for (const t of cur) { const n = c.get(t) || 0; if (n > 0) c.set(t, n - 1); else out.push(t); }
+  return out;
+}
 function pickColor(a) {
   const n = (a.name + " " + (a.tooltip || "")).toLowerCase();
   if (/hp|health|heal|pray|low|stun|death|\bdie\b|lobby/.test(n)) return "#c0392b";
@@ -109,7 +119,7 @@ async function loadAlerters(boss) {
   const bl = boss ? normalizePreset(boss).alerters : [];
   alerters = [...gl, ...bl].map((a, i) => ({ ...a, id: i }));
   rt = new Map(alerters.map((a) => [a.id, { active:false, firedAt:0 }]));
-  toasts = []; lastNewest = ""; lastActivity = Date.now();
+  toasts = []; prevChat = []; lastActivity = Date.now();
 }
 
 function fire(a, now) {
@@ -137,19 +147,20 @@ async function tick() {
     if (input) { if (input.x != null) curX = input.x; if (input.y != null) curY = input.y; if (input.seq != null) curSeq = input.seq; }
 
     if (!paused && alerters.length) {
-      // ── most-recent chat line (bottom-most = max y) ──
+      // ── chat: scan EVERY newly-appeared line (not just the newest) so a clean
+      //    capture of a message fires it even when nearby captures are garbled by
+      //    NXT's chat fade. Each line is "fresh" only the tick it shows up.
       const chat = await GET("/api/chat");
-      let newest = "", maxY = -1;
-      for (const l of (chat && chat.lines) || []) { const t = norm(l.text); if (!t) continue; if ((l.y || 0) >= maxY) { maxY = l.y || 0; newest = t; } }
-      lastChat = newest || "(none)";
-      if (newest && newest !== lastNewest) {
-        lastNewest = newest; lastActivity = now;
-        logln("chat: " + newest);
+      const cur = [];
+      for (const l of (chat && chat.lines) || []) { const t = norm(l.text); if (t) cur.push(t); }
+      lastChat = cur.length ? cur[cur.length - 1] : "(none)";
+      const fresh = freshLines(prevChat, cur);
+      prevChat = cur;
+      if (fresh.length) lastActivity = now;
+      for (const t of fresh) {
+        logln("chat: " + t);
         for (const a of alerters) {
-          if (a.type !== "chat") continue;
-          const st = rt.get(a.id); if (!st) continue;
-          if (a.resetTexts.length && hit(newest, a.resetTexts)) st.active = false;
-          if (hit(newest, a.fireTexts) && !st.active) { fire(a, now); st.active = true; st.firedAt = now; }
+          if (a.type === "chat" && a.fireTexts.length && hit(t, a.fireTexts)) fire(a, now);
         }
       }
       // ── bars + timers (evaluated every tick) ──
