@@ -78,7 +78,7 @@ function makeProxy(label, overrides) {
 function createNativeStub() {
   const overrides = {
     __stub: true,
-    // Alt1 replacement API — return-shape matters (numbers read directly).
+    // RS3Buddy replacement API — return-shape matters (numbers read directly).
     getRsReady: () => 0,
     getRsX: () => 0,
     getRsY: () => 0,
@@ -151,7 +151,7 @@ var init_native_stub = __esm({
 var import_electron = require("electron");
 var path = __toESM(require("path"));
 var fs = require("fs");
-var debugLogPath = `/tmp/alt1gl-preload-${process.pid}.log`;
+var debugLogPath = `/tmp/rs3buddy-preload-${process.pid}.log`;
 try {
   fs.writeFileSync(debugLogPath, `=== Preload IMMEDIATE START PID=${process.pid} time=${Date.now()} ===
 `);
@@ -182,8 +182,8 @@ function cleanupStaleSharedMemory() {
   try {
     const shmDir = "/dev/shm";
     const files = fs.readdirSync(shmDir);
-    const alt1Files = files.filter((f) => f.startsWith("alt1link_"));
-    if (alt1Files.length === 0)
+    const rs3buddyFiles = files.filter((f) => f.startsWith("rs3buddylink_"));
+    if (rs3buddyFiles.length === 0)
       return;
     const runningPids = /* @__PURE__ */ new Set();
     try {
@@ -199,8 +199,8 @@ function cleanupStaleSharedMemory() {
       return;
     }
     let cleaned = 0;
-    for (const file of alt1Files) {
-      const match = file.match(/^alt1link_(\d+)/);
+    for (const file of rs3buddyFiles) {
+      const match = file.match(/^rs3buddylink_(\d+)/);
       if (match) {
         const pid = parseInt(match[1], 10);
         if (!runningPids.has(pid)) {
@@ -369,7 +369,7 @@ if (addonPath && !addonLoadError) {
           debug("Using DLL path: " + injectionState.dllPath);
           const addonDir2 = path.dirname(addonPath);
           if (IS_LINUX) {
-            const shmPath = `/dev/shm/alt1link_${injectionState.pid}`;
+            const shmPath = `/dev/shm/rs3buddylink_${injectionState.pid}`;
             debug("Checking for overlay shared memory at: " + shmPath);
             let shmExists = false;
             for (let retry = 0; retry < 10; retry++) {
@@ -387,7 +387,7 @@ if (addonPath && !addonLoadError) {
             if (!shmExists) {
               debug("ERROR: Overlay shared memory not found after retries!");
             } else {
-              const instPath = `/dev/shm/alt1link_${injectionState.pid}_inst_1`;
+              const instPath = `/dev/shm/rs3buddylink_${injectionState.pid}_inst_1`;
               debug("Checking for GL server instance at: " + instPath);
               let instExists = false;
               for (let retry = 0; retry < 20; retry++) {
@@ -448,7 +448,7 @@ if (addonPath && !addonLoadError) {
             debug("Attempting SYNC injection with: " + injectedLibPath);
             if (fs.existsSync(injectedLibPath)) {
               if (IS_LINUX) {
-                const shmPath = `/dev/shm/alt1link_${pids[0]}`;
+                const shmPath = `/dev/shm/rs3buddylink_${pids[0]}`;
                 debug("Checking for overlay shared memory at: " + shmPath);
                 let shmExists = false;
                 for (let retry = 0; retry < 10; retry++) {
@@ -464,7 +464,7 @@ if (addonPath && !addonLoadError) {
                   }
                 }
                 if (shmExists) {
-                  const instPath = `/dev/shm/alt1link_${pids[0]}_inst_1`;
+                  const instPath = `/dev/shm/rs3buddylink_${pids[0]}_inst_1`;
                   debug("Checking for GL server instance at: " + instPath);
                   let instExists = false;
                   for (let retry = 0; retry < 20; retry++) {
@@ -543,17 +543,17 @@ if (addonPath && !addonLoadError) {
     nativeAddon = null;
   }
 }
-debug("Preload main code complete, setting up globalThis.alt1gl...");
+debug("Preload main code complete, setting up globalThis.rs3buddy...");
 if (addonLoadError) {
   debug("WARNING: Native addon failed to load - app will run without native features");
   debug("Error was: " + addonLoadError.message);
 }
 if (nativeAddon) {
   const addonDir = path.dirname(addonPath);
-  globalThis.alt1glNativeDir = addonDir;
-  debug("Native directory exposed as globalThis.alt1glNativeDir: " + addonDir);
-  globalThis.alt1gl = nativeAddon;
-  debug("Native addon exposed as globalThis.alt1gl");
+  globalThis.rs3buddyNativeDir = addonDir;
+  debug("Native directory exposed as globalThis.rs3buddyNativeDir: " + addonDir);
+  globalThis.rs3buddy = nativeAddon;
+  debug("Native addon exposed as globalThis.rs3buddy");
   if (!nativeAddon.overlay) {
     nativeAddon.overlay = {};
   }
@@ -663,7 +663,7 @@ if (nativeAddon) {
   };
   console.log("[AppWindowPreload] fs.copyFileSync hook installed");
 } else {
-  console.warn("[AppWindowPreload] Native addon not available, globalThis.alt1gl will be null");
+  console.warn("[AppWindowPreload] Native addon not available, globalThis.rs3buddy will be null");
 }
 var appWindowApi = {
   close: () => import_electron.ipcRenderer.send("app-window:close"),
@@ -862,9 +862,9 @@ var hotkeyApi = {
    * @returns Promise<number> Hotkey ID for later management (-1 if registration failed or user declined)
    *
    * @example
-   * const id = await alt1Hotkeys.register(
-   *   alt1Hotkeys.Modifiers.Ctrl | alt1Hotkeys.Modifiers.Shift,
-   *   alt1Hotkeys.Keys.A,
+   * const id = await rs3buddyHotkeys.register(
+   *   rs3buddyHotkeys.Modifiers.Ctrl | rs3buddyHotkeys.Modifiers.Shift,
+   *   rs3buddyHotkeys.Keys.A,
    *   'my-action',
    *   (event) => console.log('Hotkey pressed!')
    * );
@@ -908,7 +908,7 @@ var hotkeyApi = {
    * @returns Promise<number> Hotkey ID (-1 if registration failed or user declined)
    *
    * @example
-   * const id = await alt1Hotkeys.registerAccelerator('Ctrl+Shift+R', 'reload-data');
+   * const id = await rs3buddyHotkeys.registerAccelerator('Ctrl+Shift+R', 'reload-data');
    */
   async registerAccelerator(accelerator, action, callback, skipConflictCheck) {
     const appId = await import_electron.ipcRenderer.invoke("app-window:get-title") || "unknown-app";
@@ -978,7 +978,7 @@ var hotkeyApi = {
    * @returns Function to remove the listener
    *
    * @example
-   * const unlisten = alt1Hotkeys.onAction('my-action', (event) => {
+   * const unlisten = rs3buddyHotkeys.onAction('my-action', (event) => {
    *   console.log('Action triggered!', event);
    * });
    * // Later: unlisten();
@@ -1061,8 +1061,8 @@ var hotkeyApi = {
     return await import_electron.ipcRenderer.invoke("focus:setGlobalOverride", allow);
   }
 };
-window.alt1Hotkeys = hotkeyApi;
-console.log("[AppWindowPreload] alt1Hotkeys API exposed");
+window.rs3buddyHotkeys = hotkeyApi;
+console.log("[AppWindowPreload] rs3buddyHotkeys API exposed");
 if (nativeAddon) {
   window.native = nativeAddon;
   console.log("[AppWindowPreload] Native addon also exposed as window.native");
@@ -1070,7 +1070,7 @@ if (nativeAddon) {
 var titlebarTitle = "Loading...";
 var titlebarStyleElement = null;
 var TITLEBAR_CSS = `
-  #alt1gl-titlebar {
+  #rs3buddy-titlebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -1087,7 +1087,7 @@ var TITLEBAR_CSS = `
     user-select: none;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
-  #alt1gl-title {
+  #rs3buddy-title {
     color: rgba(255, 255, 255, 0.9);
     font-size: 12px;
     font-weight: 500;
@@ -1097,7 +1097,7 @@ var TITLEBAR_CSS = `
     flex: 1;
     -webkit-app-region: drag;
   }
-  #alt1gl-close-btn {
+  #rs3buddy-close-btn {
     width: 24px;
     height: 24px;
     border: none;
@@ -1113,14 +1113,14 @@ var TITLEBAR_CSS = `
     flex-shrink: 0;
     -webkit-app-region: no-drag;
   }
-  #alt1gl-close-btn:hover {
+  #rs3buddy-close-btn:hover {
     background: #e81123;
     color: #ffffff;
   }
-  #alt1gl-close-btn:active {
+  #rs3buddy-close-btn:active {
     background: #c50f1f;
   }
-  #alt1gl-close-btn svg {
+  #rs3buddy-close-btn svg {
     width: 12px;
     height: 12px;
   }
@@ -1156,7 +1156,7 @@ function ensureTitlebarStyle() {
   if (titlebarStyleElement && titlebarStyleElement.parentNode)
     return;
   titlebarStyleElement = document.createElement("style");
-  titlebarStyleElement.id = "alt1gl-titlebar-style";
+  titlebarStyleElement.id = "rs3buddy-titlebar-style";
   titlebarStyleElement.textContent = TITLEBAR_CSS;
   if (document.head) {
     document.head.appendChild(titlebarStyleElement);
@@ -1164,12 +1164,12 @@ function ensureTitlebarStyle() {
 }
 function createTitlebarElement() {
   const titlebar = document.createElement("div");
-  titlebar.id = "alt1gl-titlebar";
+  titlebar.id = "rs3buddy-titlebar";
   const titleText = document.createElement("span");
-  titleText.id = "alt1gl-title";
+  titleText.id = "rs3buddy-title";
   titleText.textContent = titlebarTitle;
   const closeBtn = document.createElement("button");
-  closeBtn.id = "alt1gl-close-btn";
+  closeBtn.id = "rs3buddy-close-btn";
   closeBtn.title = "Close";
   closeBtn.innerHTML = `
     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -1182,7 +1182,7 @@ function createTitlebarElement() {
   return titlebar;
 }
 function injectTitlebar() {
-  if (document.getElementById("alt1gl-titlebar"))
+  if (document.getElementById("rs3buddy-titlebar"))
     return;
   if (!document.body)
     return;
@@ -1193,7 +1193,7 @@ function injectTitlebar() {
 }
 function watchTitlebar() {
   const bodyObserver = new MutationObserver(() => {
-    if (!document.getElementById("alt1gl-titlebar") && document.body) {
+    if (!document.getElementById("rs3buddy-titlebar") && document.body) {
       console.log("[Titlebar] Detected removal, re-injecting");
       injectTitlebar();
     }
@@ -1202,7 +1202,7 @@ function watchTitlebar() {
     bodyObserver.observe(document.body, { childList: true });
   }
   const htmlObserver = new MutationObserver(() => {
-    if (document.body && !document.getElementById("alt1gl-titlebar")) {
+    if (document.body && !document.getElementById("rs3buddy-titlebar")) {
       console.log("[Titlebar] Detected body replacement, re-injecting");
       bodyObserver.disconnect();
       injectTitlebar();
@@ -1211,7 +1211,7 @@ function watchTitlebar() {
   });
   htmlObserver.observe(document.documentElement, { childList: true });
   setInterval(() => {
-    if (document.body && !document.getElementById("alt1gl-titlebar")) {
+    if (document.body && !document.getElementById("rs3buddy-titlebar")) {
       console.log("[Titlebar] Periodic check: titlebar missing, re-injecting");
       injectTitlebar();
       bodyObserver.disconnect();
@@ -1221,7 +1221,7 @@ function watchTitlebar() {
 }
 import_electron.ipcRenderer.invoke("app-window:get-title").then((title) => {
   titlebarTitle = title;
-  const el = document.getElementById("alt1gl-title");
+  const el = document.getElementById("rs3buddy-title");
   if (el)
     el.textContent = title;
 });
@@ -1235,7 +1235,7 @@ if (document.readyState === "loading") {
   watchTitlebar();
 }
 window.addEventListener("load", () => {
-  if (!document.getElementById("alt1gl-titlebar")) {
+  if (!document.getElementById("rs3buddy-titlebar")) {
     console.log("[Titlebar] Re-injecting after window load");
     injectTitlebar();
   }

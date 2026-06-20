@@ -82,7 +82,7 @@ export interface InjectionSettings {
 export interface AppConfig {
   jagexLauncherPath: string | null;
   rs2ClientPath: string | null;
-  alt1glLibPath: string | null;
+  rs3buddyLibPath: string | null;
   startMinimized: boolean;  // Start minimized to system tray
   closeToTray: boolean;     // Close to tray instead of exiting
   toolbar?: ToolbarSettings;  // Toolbar customization settings
@@ -91,7 +91,7 @@ export interface AppConfig {
   injectionSettings?: InjectionSettings;    // DLL injection preferences
 }
 
-// Installed Alt1 app
+// Installed RS3Buddy app
 export interface InstalledApp {
   appName: string;
   displayName?: string;  // Optional custom display name (e.g., "AfkWarden (Dev)" or "AfkWarden (Prod)")
@@ -129,7 +129,7 @@ export interface GameEnv extends NodeJS.ProcessEnv {
   JX_SESSION_ID?: string;
   JX_CHARACTER_ID?: string;
   JX_DISPLAY_NAME?: string;
-  ALT1GL_DLL_PATH?: string;
+  RS3BUDDY_DLL_PATH?: string;
   LD_PRELOAD?: string;
 }
 

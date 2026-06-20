@@ -65,7 +65,7 @@ export function createNativeStub(): NativeAddon {
   const overrides: Record<string, any> = {
     __stub: true,
 
-    // Alt1 replacement API — return-shape matters (numbers read directly).
+    // RS3Buddy replacement API — return-shape matters (numbers read directly).
     getRsReady: () => 0,
     getRsX: () => 0,
     getRsY: () => 0,

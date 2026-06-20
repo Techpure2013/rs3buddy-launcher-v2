@@ -105,19 +105,19 @@ export function getRs2ClientPid(): number | null {
 
 // Check if the overlay Unix socket exists
 export function doesOverlaySocketExist(pid: number): boolean {
-  const socketPath = `/tmp/alt1gl-overlay-${pid}`;
+  const socketPath = `/tmp/rs3buddy-overlay-${pid}`;
   return fs.existsSync(socketPath);
 }
 
 // Check if the overlay shared memory exists (injected.so is loaded)
 export function isOverlayLoaded(pid: number): boolean {
-  const shmPath = `/dev/shm/alt1link_${pid}`;
+  const shmPath = `/dev/shm/rs3buddylink_${pid}`;
   return fs.existsSync(shmPath);
 }
 
 // Check if the GL server instance is ready (fully initialized)
 export function isGlServerReady(pid: number): boolean {
-  const instPath = `/dev/shm/alt1link_${pid}_inst_1`;
+  const instPath = `/dev/shm/rs3buddylink_${pid}_inst_1`;
   return fs.existsSync(instPath);
 }
 

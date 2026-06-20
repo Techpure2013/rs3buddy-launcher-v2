@@ -92,7 +92,7 @@ var api = {
   // Path setters
   setJagexLauncherPath: (path) => import_electron.ipcRenderer.invoke("set-jagex-launcher-path", path),
   setRs2ClientPath: (path) => import_electron.ipcRenderer.invoke("set-rs2client-path", path),
-  setAlt1glLibPath: (path) => import_electron.ipcRenderer.invoke("set-alt1gl-lib-path", path),
+  setRs3buddyLibPath: (path) => import_electron.ipcRenderer.invoke("set-rs3buddy-lib-path", path),
   // Startup settings
   getLaunchOnStartup: () => import_electron.ipcRenderer.invoke("get-launch-on-startup"),
   setLaunchOnStartup: (enabled) => import_electron.ipcRenderer.invoke("set-launch-on-startup", enabled),

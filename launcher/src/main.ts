@@ -14,7 +14,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 import type { BrowserWindow as BrowserWindowType } from 'electron';
-import { initDataDir, detectPaths, getConfig, saveConfig, getSessions, removeSession, saveCredentials, saveClientState, loadClientState, removeClientState, cleanupStaleClientStates } from './config';
+import { initDataDir, migrateLegacyDataDir, detectPaths, getConfig, saveConfig, getSessions, removeSession, saveCredentials, saveClientState, loadClientState, removeClientState, cleanupStaleClientStates } from './config';
 import { setProcessCallbacks, startProcessMonitor, stopProcessMonitor, getPendingLaunch, clearPendingLaunch, getAllRs2ClientPids, setAutoInject, setUseOverlay, doesOverlayPipeExist, markPidInjected } from './game';
 import { cleanupLegacyDllCopies, tryConnectToExistingClient, injectIntoProcess, isInjected, isInjectedPid, reconnectToOverlay } from './inject';
 import { engineController, engineUpdater } from './engine';
@@ -56,6 +56,7 @@ import { getHotkeysSettings } from './config';
 import { initAutoUpdater } from './updater';
 import { addonManager } from './addon/addon-manager';
 import { registerAddonIpcHandlers, shutdownAddonIpc } from './addon/ipc-handlers';
+import { startBuiltinAppServer, stopBuiltinAppServer } from './builtin-apps';
 
 // Version marker
 console.log('=== RS3 Launcher Buddy ===');
@@ -77,14 +78,14 @@ if (process.platform === 'linux') {
   }
 }
 
-// Register alt1:// protocol handler early (before app.whenReady)
+// Register rs3buddy:// protocol handler early (before app.whenReady)
 registerProtocol();
 
-// Register alt1-builtin:// protocol for serving built-in app files
+// Register rs3buddy-builtin:// protocol for serving built-in app files
 // Must be done before app.whenReady() for scheme privileges
 protocol.registerSchemesAsPrivileged([
   {
-    scheme: 'alt1-builtin',
+    scheme: 'rs3buddy-builtin',
     privileges: {
       standard: true,
       secure: true,
@@ -106,7 +107,7 @@ if (!gotTheLock) {
   app.on('second-instance', (_event: Electron.Event, commandLine: string[], _workingDirectory: string) => {
     console.log('[Main] Second instance detected, command line:', commandLine);
 
-    // Look for alt1:// URL in command line
+    // Look for rs3buddy:// URL in command line
     const protocolUrl = getProtocolUrlFromArgs(commandLine);
     if (protocolUrl) {
       console.log('[Main] Protocol URL from second instance:', protocolUrl);
@@ -144,12 +145,23 @@ let isQuitting = false;
 
 // Initialize the application
 function initialize(): void {
+  // One-time rebrand migration: move legacy %APPDATA%/<app>/alt1gl data into
+  // the new rs3buddy dir so users keep their installed apps + config. Runs
+  // before initDataDir() (which also calls it defensively) so it happens as
+  // early as possible in startup.
+  migrateLegacyDataDir();
+
   // Initialize data directory and load saved data
   initDataDir();
 
   // Clean up any old DLL copies from build directory (legacy location)
   // This helps prevent node-gyp rebuild issues
   cleanupLegacyDllCopies();
+
+  // Serve the built-in web apps (e.g. Sentinel) from a tiny loopback HTTP server
+  // on 127.0.0.1:3100 so they're available with no external dev server. The
+  // app-window config (config.ts HTTP_APPS) points at http://127.0.0.1:3100/...
+  startBuiltinAppServer();
 
   // Check if we should start minimized
   const config = getConfig();
@@ -539,10 +551,10 @@ app.whenReady().then(() => {
   if (!gotTheLock) return;
   initialize();
 
-  // Register alt1-builtin:// protocol handler to serve built-in app files
-  // URL format: alt1-builtin://app-name/path/to/file
-  // Example: alt1-builtin://rs3-tile-marker/index.html
-  protocol.handle('alt1-builtin', async (request: { url: string }) => {
+  // Register rs3buddy-builtin:// protocol handler to serve built-in app files
+  // URL format: rs3buddy-builtin://app-name/path/to/file
+  // Example: rs3buddy-builtin://rs3-tile-marker/index.html
+  protocol.handle('rs3buddy-builtin', async (request: { url: string }) => {
     const url = new URL(request.url);
     const appName = url.hostname;  // e.g., "rs3-tile-marker"
     const filePath = url.pathname; // e.g., "/index.html"
@@ -563,7 +575,7 @@ app.whenReady().then(() => {
     }
 
     const fullPath = path.join(builtinAppsPath, filePath);
-    console.log(`[Protocol] alt1-builtin://${appName}${filePath} -> ${fullPath}`);
+    console.log(`[Protocol] rs3buddy-builtin://${appName}${filePath} -> ${fullPath}`);
 
     // Security: ensure the path is within the builtin-apps directory
     const normalizedPath = path.normalize(fullPath);
@@ -597,7 +609,7 @@ app.whenReady().then(() => {
     return response;
   });
 
-  console.log('[Protocol] Registered alt1-builtin:// file protocol handler');
+  console.log('[Protocol] Registered rs3buddy-builtin:// file protocol handler');
 
   // Check if launched with a protocol URL
   const protocolUrl = getProtocolUrlFromArgs(process.argv);
@@ -628,7 +640,7 @@ app.whenReady().then(() => {
 
 // Window all closed handler - don't quit, stay in tray
 app.on('window-all-closed', () => {
-  // Don't quit - Alt1GL runs in the system tray
+  // Don't quit - RS3Buddy runs in the system tray
   // Only quit on macOS if isQuitting is true
   if (process.platform === 'darwin' && isQuitting) {
     app.quit();
@@ -689,6 +701,9 @@ app.on('before-quit', async (event: Electron.Event) => {
   shutdownAddonIpc();
   addonManager.shutdown();
   console.log('[Main] Addon IPC and manager shut down');
+
+  stopBuiltinAppServer();
+  console.log('[Main] Built-in app server stopped');
 
   console.log('[Main] Cleanup complete, quitting...');
   console.log('[Main] ========================================');

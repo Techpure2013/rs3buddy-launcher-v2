@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sentinel — Alert Monitor</title>
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<header>
+  <span id="dot"></span>
+  <h1>Sentinel</h1>
+  <span id="conn" class="muted">connecting…</span>
+  <span style="flex:1"></span>
+  <span id="runpill" class="pill">stopped</span>
+</header>
+
+<div class="wrap">
+  <!-- Run -->
+  <div class="card">
+    <h2>Monitor</h2>
+    <div class="row sb">
+      <div class="row">
+        <select id="presetSel" title="Active preset"></select>
+        <button id="loadBtn">Load</button>
+      </div>
+      <div class="row">
+        <button id="startBtn" class="go">Start</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="stopBtn" class="warn">Stop</button>
+      </div>
+    </div>
+    <div class="muted" id="statline" style="margin-top:8px;">No preset loaded.</div>
+    <div class="row" style="margin-top:8px;">
+      <button id="testBtn">Test-fire first alert</button>
+      <button id="testStun">Test "stunned" tooltip</button>
+    </div>
+  </div>
+
+  <!-- Presets -->
+  <div class="card">
+    <h2>Presets</h2>
+    <div class="row sb">
+      <div class="row">
+        <input type="file" id="importFile" accept=".json" class="hide" />
+        <button id="importBtn">Import AFK Warden JSON…</button>
+      </div>
+      <div class="row">
+        <button id="newBtn">New</button>
+        <button id="dupBtn">Duplicate</button>
+        <button id="delBtn" class="warn">Delete</button>
+      </div>
+    </div>
+    <p class="muted" style="margin:8px 0 0;">Imported presets work as-is. The always-on <b>Global alerts</b> preset (the “stunned” tooltip) is merged on top of whatever boss preset is loaded.</p>
+  </div>
+
+  <!-- Quick add -->
+  <div class="card">
+    <h2>Add an alert</h2>
+    <div class="grid2">
+      <div><label>Name</label><input type="text" id="aName" placeholder="HP Alert" /></div>
+      <div><label>Type</label>
+        <select id="aType">
+          <option value="chat">chat (match a message)</option>
+          <option value="actionbar">actionbar (hp/prayer…)</option>
+          <option value="inactive">inactive (timer)</option>
+        </select>
+      </div>
+    </div>
+    <div id="fChat">
+      <label>Fire when chat contains…</label><input type="text" id="aFire" placeholder="You've been stunned." />
+      <label>Reset when chat contains… (optional)</label><input type="text" id="aReset" placeholder="" />
+    </div>
+    <div id="fBar" class="hide grid2">
+      <div><label>Stat</label><select id="aStat"><option>hp</option><option>prayer</option><option>adrenaline</option><option>summoning</option></select></div>
+      <div><label>When</label><select id="aHL"><option value="lower">below</option><option value="higher">above</option></select></div>
+      <div><label>Threshold (% of max)</label><input type="number" id="aThresh" value="50" min="0" max="100" /></div>
+    </div>
+    <div id="fTimer" class="hide">
+      <label>Fire after N seconds idle</label><input type="number" id="aDelay" value="270" min="1" />
+    </div>
+    <div class="grid2" style="margin-top:6px;">
+      <div><label>Dismiss</label><select id="aDismiss"><option value="timed">timed (auto-hide)</option><option value="refocus">tooltip on mouse until refocus</option></select></div>
+      <div><label>Sound file (optional)</label><input type="text" id="aSound" placeholder="C:/Windows/Media/Alarm01.wav" /></div>
+    </div>
+    <div class="row" style="margin-top:10px;"><button id="addBtn" class="primary">Add to preset</button></div>
+  </div>
+
+  <!-- Raw editor -->
+  <div class="card">
+    <h2>Preset JSON</h2>
+    <textarea id="json" spellcheck="false"></textarea>
+    <div class="row sb" style="margin-top:8px;">
+      <input type="text" id="saveName" placeholder="kerapac-nm.json" style="max-width:200px;" />
+      <button id="saveBtn" class="primary">Save preset</button>
+    </div>
+  </div>
+
+  <div class="card"><h2>Log</h2><div id="log"></div></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

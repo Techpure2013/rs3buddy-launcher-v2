@@ -1,10 +1,10 @@
 /**
- * Alt1 Protocol Handler
- * Handles alt1:// URLs for app installation and other actions
+ * RS3Buddy Protocol Handler
+ * Handles rs3buddy:// URLs for app installation and other actions
  *
  * Supported URLs:
- * - alt1://addapp/https://example.com/appconfig.json
- * - alt1://addapp/localhost:3000/appconfig.json
+ * - rs3buddy://addapp/https://example.com/appconfig.json
+ * - rs3buddy://addapp/localhost:3000/appconfig.json
  */
 
 import * as path from 'path';
@@ -14,13 +14,13 @@ import { getInstalledApps, addApp, saveApps } from './config';
 import { getMainWindow, sendToMainWindow } from './windows';
 
 // Protocol name (without ://)
-const PROTOCOL_NAME = 'alt1';
+const PROTOCOL_NAME = 'rs3buddy';
 
 // Track pending protocol URL (received before app was ready)
 let pendingProtocolUrl: string | null = null;
 
 /**
- * Register alt1:// as a protocol handler
+ * Register rs3buddy:// as a protocol handler
  * Must be called before app.whenReady()
  */
 export function registerProtocol(): void {
@@ -61,7 +61,7 @@ export function registerProtocol(): void {
       }
 
       // Create the protocol key structure
-      execSync(`reg add "HKCU\\Software\\Classes\\${PROTOCOL_NAME}" /ve /d "URL:Alt1 Protocol" /f`, { stdio: 'ignore' });
+      execSync(`reg add "HKCU\\Software\\Classes\\${PROTOCOL_NAME}" /ve /d "URL:RS3Buddy Protocol" /f`, { stdio: 'ignore' });
       execSync(`reg add "HKCU\\Software\\Classes\\${PROTOCOL_NAME}" /v "URL Protocol" /d "" /f`, { stdio: 'ignore' });
       execSync(`reg add "HKCU\\Software\\Classes\\${PROTOCOL_NAME}\\shell\\open\\command" /ve /d "${command.replace(/"/g, '\\"')}" /f`, { stdio: 'ignore' });
 
@@ -102,13 +102,13 @@ export function unregisterProtocol(): void {
 }
 
 /**
- * Parse an alt1:// URL and extract the action and payload
+ * Parse an rs3buddy:// URL and extract the action and payload
  */
 function parseProtocolUrl(url: string): { action: string; payload: string } | null {
-  // Expected format: alt1://action/payload
-  // Example: alt1://addapp/https://example.com/appconfig.json
+  // Expected format: rs3buddy://action/payload
+  // Example: rs3buddy://addapp/https://example.com/appconfig.json
 
-  const match = url.match(/^alt1:\/\/([^/]+)\/(.+)$/i);
+  const match = url.match(/^rs3buddy:\/\/([^/]+)\/(.+)$/i);
   if (!match) {
     console.log('[Protocol] Invalid URL format:', url);
     return null;
@@ -121,7 +121,7 @@ function parseProtocolUrl(url: string): { action: string; payload: string } | nu
 }
 
 /**
- * Handle an alt1:// URL
+ * Handle an rs3buddy:// URL
  */
 export async function handleProtocolUrl(url: string): Promise<void> {
   console.log('[Protocol] Handling URL:', url);
@@ -144,7 +144,7 @@ export async function handleProtocolUrl(url: string): Promise<void> {
 }
 
 /**
- * Handle alt1://addapp/... URL
+ * Handle rs3buddy://addapp/... URL
  */
 async function handleAddApp(configUrl: string): Promise<void> {
   console.log('[Protocol] Adding app from:', configUrl);
@@ -227,10 +227,10 @@ export function consumePendingProtocolUrl(): string | null {
 }
 
 /**
- * Check if a URL is an alt1:// protocol URL
+ * Check if a URL is an rs3buddy:// protocol URL
  */
 export function isProtocolUrl(url: string): boolean {
-  return url.toLowerCase().startsWith('alt1://');
+  return url.toLowerCase().startsWith('rs3buddy://');
 }
 
 /**
@@ -238,7 +238,7 @@ export function isProtocolUrl(url: string): boolean {
  * Windows passes the URL as the last argument when launching via protocol
  */
 export function getProtocolUrlFromArgs(args: string[]): string | null {
-  // Look for alt1:// URL in arguments
+  // Look for rs3buddy:// URL in arguments
   for (const arg of args) {
     if (isProtocolUrl(arg)) {
       return arg;

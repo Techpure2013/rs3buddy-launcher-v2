@@ -53,21 +53,21 @@ import { BUILD_TYPE } from './build-config';
 const IS_BETA_BUILD = BUILD_TYPE === 'beta';
 
 // NOTE (rs3buddy-launcher-v2): the old patchrs-based local builtin apps
-// (alt1-builtin://...) were removed — they depended on the stripped native and
+// (rs3buddy-builtin://...) were removed — they depended on the stripped native and
 // are being replaced by new apps that consume the rs3buddy-api HTTP engine.
 // Only HTTP-hosted web apps remain. New apps get added here as they are built.
 const HTTP_APPS: InstalledApp[] = [
   // Sentinel — AFK-Warden-style alert monitor. A web app built entirely on the
   // rs3buddy SDK (fetches the engine on :4400; draws the in-game overlay via the
-  // API). DEV: serve apps/monitor on :3100 (from rs3buddy-api:
-  //   npx serve -l 3100 apps/monitor
-  // ). RELEASE: host it (e.g. techpure.dev) and swap the URLs below.
+  // API). The launcher serves it itself: at startup main.ts spins up a tiny
+  // loopback static server (builtin-apps.ts) on 127.0.0.1:3100 that serves
+  // launcher/builtin-apps/, so the app is available with no external dev server.
   {
     appName: 'Sentinel',
     displayName: 'Sentinel — Alert Monitor',
     description: 'AFK-Warden-style alert monitor built on the rs3buddy SDK.',
-    appUrl: 'http://localhost:3100/index.html',
-    configUrl: 'http://localhost:3100/appconfig.json',
+    appUrl: 'http://127.0.0.1:3100/sentinel/index.html',
+    configUrl: 'http://127.0.0.1:3100/sentinel/appconfig.json',
     defaultWidth: 460,
     defaultHeight: 640,
     minWidth: 360,
@@ -87,16 +87,54 @@ let installedApps: InstalledApp[] = [];
 let config: AppConfig = {
   jagexLauncherPath: null,
   rs2ClientPath: null,
-  alt1glLibPath: null,
+  rs3buddyLibPath: null,
   startMinimized: false,
   closeToTray: true,  // Default to closing to tray (stay running)
   toolbar: { ...DEFAULT_TOOLBAR_SETTINGS }
 };
 let hotkeysSettings: HotkeysSettings = { ...DEFAULT_HOTKEYS_SETTINGS };
 
+/**
+ * One-time migration of the legacy data directory.
+ *
+ * Older builds stored data in <userData>/alt1gl (apps.json, config.json,
+ * app-data/, etc.). The brand is now rs3buddy, so the directory moved to
+ * <userData>/rs3buddy. If the OLD dir exists and the NEW one does not, move it
+ * so users keep their installed apps + config across the rebrand.
+ *
+ * Must run before initDataDir() creates the new (empty) directory. Safe to call
+ * repeatedly — it no-ops once the new dir exists.
+ */
+export function migrateLegacyDataDir(): void {
+  try {
+    const base = getApp().getPath('userData');
+    const oldDir = path.join(base, 'alt1gl');
+    const newDir = path.join(base, 'rs3buddy');
+
+    if (fs.existsSync(oldDir) && !fs.existsSync(newDir)) {
+      console.log(`[Config] Migrating legacy data dir: ${oldDir} -> ${newDir}`);
+      try {
+        // Fast path: same volume — atomic rename.
+        fs.renameSync(oldDir, newDir);
+        console.log('[Config] Data dir migration complete (renamed)');
+      } catch (renameErr) {
+        // Fallback: rename can fail across volumes or if locked. Recursively copy.
+        console.warn('[Config] rename failed, falling back to copy:', renameErr);
+        fs.cpSync(oldDir, newDir, { recursive: true });
+        console.log('[Config] Data dir migration complete (copied; old dir left in place)');
+      }
+    }
+  } catch (e) {
+    // Never let migration failure block startup — worst case the user re-installs apps.
+    console.error('[Config] Legacy data dir migration failed (continuing):', e);
+  }
+}
+
 // Initialize data directory
 export function initDataDir(): void {
-  dataDir = path.join(getApp().getPath('userData'), 'alt1gl');
+  // Migrate the pre-rebrand <userData>/alt1gl dir to <userData>/rs3buddy first.
+  migrateLegacyDataDir();
+  dataDir = path.join(getApp().getPath('userData'), 'rs3buddy');
   credsFile = path.join(dataDir, 'credentials.json');
   appsFile = path.join(dataDir, 'apps.json');
   configFile = path.join(dataDir, 'config.json');
@@ -605,8 +643,8 @@ export function findRs2Client(): string | null {
   }
 }
 
-// Find Alt1GL Library
-export function findAlt1glLib(): string | null {
+// Find RS3Buddy Library
+export function findRs3buddyLib(): string | null {
   const isWindows = process.platform === 'win32';
   const libName = isWindows ? 'injected.dll' : 'injected.so';
 
@@ -628,7 +666,7 @@ export function findAlt1glLib(): string | null {
     path.join(projectRoot, 'out', 'Release', libName),
     path.join(__dirname, 'lib', libName),
     // Absolute fallback for development
-    '/home/techpure/Desktop/Alt1Launcher/build/Release/injected.so',
+    '/home/techpure/Desktop/RS3BuddyLauncher/build/Release/injected.so',
   ];
 
   for (const p of buildPaths) {
@@ -642,12 +680,12 @@ export function findAlt1glLib(): string | null {
 export function detectPaths(): void {
   config.jagexLauncherPath = findJagexLauncher();
   config.rs2ClientPath = findRs2Client();
-  config.alt1glLibPath = findAlt1glLib();
+  config.rs3buddyLibPath = findRs3buddyLib();
 
   console.log('Detected paths:');
   console.log('  Jagex Launcher:', config.jagexLauncherPath || 'Not found');
   console.log('  RS2 Client:', config.rs2ClientPath || 'Not found');
-  console.log('  Alt1GL Lib:', config.alt1glLibPath || 'Not found');
+  console.log('  RS3Buddy Lib:', config.rs3buddyLibPath || 'Not found');
 }
 
 // Load hotkeys settings

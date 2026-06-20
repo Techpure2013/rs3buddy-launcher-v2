@@ -1,12 +1,12 @@
 /**
  * App Window Preload Script
- * Loads native addon and exposes Alt1GL API for apps
- * Works with nodeIntegration enabled to match alt1gl-main behavior
+ * Loads native addon and exposes RS3Buddy API for apps
+ * Works with nodeIntegration enabled to match rs3buddy-main behavior
  */
 
 // IMMEDIATE logging before ANY imports - to detect if preload even starts
 const fs = require('fs');
-const debugLogPath = `/tmp/alt1gl-preload-${process.pid}.log`;
+const debugLogPath = `/tmp/rs3buddy-preload-${process.pid}.log`;
 try {
   fs.writeFileSync(debugLogPath, `=== Preload IMMEDIATE START PID=${process.pid} time=${Date.now()} ===\n`);
 } catch (e) {
@@ -49,9 +49,9 @@ function cleanupStaleSharedMemory() {
   try {
     const shmDir = '/dev/shm';
     const files = fs.readdirSync(shmDir);
-    const alt1Files = files.filter((f: string) => f.startsWith('alt1link_'));
+    const rs3buddyFiles = files.filter((f: string) => f.startsWith('rs3buddylink_'));
 
-    if (alt1Files.length === 0) return;
+    if (rs3buddyFiles.length === 0) return;
 
     // Get list of running process IDs
     const runningPids = new Set<number>();
@@ -69,9 +69,9 @@ function cleanupStaleSharedMemory() {
     }
 
     let cleaned = 0;
-    for (const file of alt1Files) {
-      // Parse PID from filename like "alt1link_12345" or "alt1link_12345_inst_1"
-      const match = file.match(/^alt1link_(\d+)/);
+    for (const file of rs3buddyFiles) {
+      // Parse PID from filename like "rs3buddylink_12345" or "rs3buddylink_12345_inst_1"
+      const match = file.match(/^rs3buddylink_(\d+)/);
       if (match) {
         const pid = parseInt(match[1], 10);
         // If the process is not running, remove the shared memory file
@@ -290,7 +290,7 @@ if (addonPath && !addonLoadError) {
 
         // IMPORTANT: We need to connect BEFORE the app code runs.
         // Use sendSync to get injection state synchronously so the addon is connected
-        // before globalThis.alt1gl is used by the app.
+        // before globalThis.rs3buddy is used by the app.
         const injectionState = ipcRenderer.sendSync('app-window:get-injection-state-sync') as { pid: number; dllPath: string; instanceId: number } | null;
         debug('Got injection state (sync): ' + JSON.stringify(injectionState));
 
@@ -304,7 +304,7 @@ if (addonPath && !addonLoadError) {
 
           // On Linux, check if overlay shared memory exists before trying to connect
           if (IS_LINUX) {
-            const shmPath = `/dev/shm/alt1link_${injectionState.pid}`;
+            const shmPath = `/dev/shm/rs3buddylink_${injectionState.pid}`;
             debug('Checking for overlay shared memory at: ' + shmPath);
 
             let shmExists = false;
@@ -325,7 +325,7 @@ if (addonPath && !addonLoadError) {
               debug('ERROR: Overlay shared memory not found after retries!');
             } else {
               // Also check for instance memory
-              const instPath = `/dev/shm/alt1link_${injectionState.pid}_inst_1`;
+              const instPath = `/dev/shm/rs3buddylink_${injectionState.pid}_inst_1`;
               debug('Checking for GL server instance at: ' + instPath);
               let instExists = false;
               for (let retry = 0; retry < 20; retry++) {
@@ -381,7 +381,7 @@ if (addonPath && !addonLoadError) {
           }
         } else {
           // No injection state from main - try SYNCHRONOUS direct injection
-          // This is critical: we must connect BEFORE globalThis.alt1gl is exposed
+          // This is critical: we must connect BEFORE globalThis.rs3buddy is exposed
           debug('No injection state from main, trying SYNCHRONOUS direct injection...');
           const addonDir = path.dirname(addonPath!);
           const pids = nativeAddon.debug.getExePids('rs2client.exe');
@@ -396,7 +396,7 @@ if (addonPath && !addonLoadError) {
             if (fs.existsSync(injectedLibPath)) {
               // On Linux, wait for shared memory to be ready
               if (IS_LINUX) {
-                const shmPath = `/dev/shm/alt1link_${pids[0]}`;
+                const shmPath = `/dev/shm/rs3buddylink_${pids[0]}`;
                 debug('Checking for overlay shared memory at: ' + shmPath);
 
                 let shmExists = false;
@@ -414,7 +414,7 @@ if (addonPath && !addonLoadError) {
 
                 if (shmExists) {
                   // Also check for instance memory
-                  const instPath = `/dev/shm/alt1link_${pids[0]}_inst_1`;
+                  const instPath = `/dev/shm/rs3buddylink_${pids[0]}_inst_1`;
                   debug('Checking for GL server instance at: ' + instPath);
                   let instExists = false;
                   for (let retry = 0; retry < 20; retry++) {
@@ -498,23 +498,23 @@ if (addonPath && !addonLoadError) {
   }
 }
 
-debug('Preload main code complete, setting up globalThis.alt1gl...');
+debug('Preload main code complete, setting up globalThis.rs3buddy...');
 if (addonLoadError) {
   debug('WARNING: Native addon failed to load - app will run without native features');
   debug('Error was: ' + addonLoadError.message);
 }
 
-// Expose native addon as globalThis.alt1gl for patchrs_napi.ts compatibility
+// Expose native addon as globalThis.rs3buddy for patchrs_napi.ts compatibility
 // This is the key - patchrs_napi.ts checks for this in non-webpack (CEF) environments
 if (nativeAddon) {
   // Get the addon directory - used for exposing path and for fs hooks
   const addonDir = path.dirname(addonPath!);
 
   // Also expose the native directory so apps can find the libraries
-  (globalThis as any).alt1glNativeDir = addonDir;
-  debug('Native directory exposed as globalThis.alt1glNativeDir: ' + addonDir);
-  (globalThis as any).alt1gl = nativeAddon;
-  debug('Native addon exposed as globalThis.alt1gl');
+  (globalThis as any).rs3buddyNativeDir = addonDir;
+  debug('Native directory exposed as globalThis.rs3buddyNativeDir: ' + addonDir);
+  (globalThis as any).rs3buddy = nativeAddon;
+  debug('Native addon exposed as globalThis.rs3buddy');
 
   // Use the launcher's main-process IPC for mouse position with debug diagnostics.
   if (!nativeAddon.overlay) {
@@ -654,7 +654,7 @@ if (nativeAddon) {
   };
   console.log('[AppWindowPreload] fs.copyFileSync hook installed');
 } else {
-  console.warn('[AppWindowPreload] Native addon not available, globalThis.alt1gl will be null');
+  console.warn('[AppWindowPreload] Native addon not available, globalThis.rs3buddy will be null');
 }
 
 // Window control API (keep for titlebar close button)
@@ -900,9 +900,9 @@ const hotkeyApi = {
    * @returns Promise<number> Hotkey ID for later management (-1 if registration failed or user declined)
    *
    * @example
-   * const id = await alt1Hotkeys.register(
-   *   alt1Hotkeys.Modifiers.Ctrl | alt1Hotkeys.Modifiers.Shift,
-   *   alt1Hotkeys.Keys.A,
+   * const id = await rs3buddyHotkeys.register(
+   *   rs3buddyHotkeys.Modifiers.Ctrl | rs3buddyHotkeys.Modifiers.Shift,
+   *   rs3buddyHotkeys.Keys.A,
    *   'my-action',
    *   (event) => console.log('Hotkey pressed!')
    * );
@@ -951,7 +951,7 @@ const hotkeyApi = {
    * @returns Promise<number> Hotkey ID (-1 if registration failed or user declined)
    *
    * @example
-   * const id = await alt1Hotkeys.registerAccelerator('Ctrl+Shift+R', 'reload-data');
+   * const id = await rs3buddyHotkeys.registerAccelerator('Ctrl+Shift+R', 'reload-data');
    */
   async registerAccelerator(
     accelerator: string,
@@ -1050,7 +1050,7 @@ const hotkeyApi = {
    * @returns Function to remove the listener
    *
    * @example
-   * const unlisten = alt1Hotkeys.onAction('my-action', (event) => {
+   * const unlisten = rs3buddyHotkeys.onAction('my-action', (event) => {
    *   console.log('Action triggered!', event);
    * });
    * // Later: unlisten();
@@ -1172,8 +1172,8 @@ const hotkeyApi = {
 };
 
 // Expose hotkey API globally
-(window as any).alt1Hotkeys = hotkeyApi;
-console.log('[AppWindowPreload] alt1Hotkeys API exposed');
+(window as any).rs3buddyHotkeys = hotkeyApi;
+console.log('[AppWindowPreload] rs3buddyHotkeys API exposed');
 
 // Also expose the native addon directly on window for convenience
 if (nativeAddon) {
@@ -1191,7 +1191,7 @@ let titlebarStyleElement: HTMLStyleElement | null = null;
 
 // The CSS for the titlebar (extracted so we can re-inject it)
 const TITLEBAR_CSS = `
-  #alt1gl-titlebar {
+  #rs3buddy-titlebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -1208,7 +1208,7 @@ const TITLEBAR_CSS = `
     user-select: none;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
-  #alt1gl-title {
+  #rs3buddy-title {
     color: rgba(255, 255, 255, 0.9);
     font-size: 12px;
     font-weight: 500;
@@ -1218,7 +1218,7 @@ const TITLEBAR_CSS = `
     flex: 1;
     -webkit-app-region: drag;
   }
-  #alt1gl-close-btn {
+  #rs3buddy-close-btn {
     width: 24px;
     height: 24px;
     border: none;
@@ -1234,14 +1234,14 @@ const TITLEBAR_CSS = `
     flex-shrink: 0;
     -webkit-app-region: no-drag;
   }
-  #alt1gl-close-btn:hover {
+  #rs3buddy-close-btn:hover {
     background: #e81123;
     color: #ffffff;
   }
-  #alt1gl-close-btn:active {
+  #rs3buddy-close-btn:active {
     background: #c50f1f;
   }
-  #alt1gl-close-btn svg {
+  #rs3buddy-close-btn svg {
     width: 12px;
     height: 12px;
   }
@@ -1279,7 +1279,7 @@ function ensureTitlebarStyle(): void {
   if (titlebarStyleElement && titlebarStyleElement.parentNode) return;
 
   titlebarStyleElement = document.createElement('style');
-  titlebarStyleElement.id = 'alt1gl-titlebar-style';
+  titlebarStyleElement.id = 'rs3buddy-titlebar-style';
   titlebarStyleElement.textContent = TITLEBAR_CSS;
 
   if (document.head) {
@@ -1290,14 +1290,14 @@ function ensureTitlebarStyle(): void {
 /** Create the titlebar DOM element */
 function createTitlebarElement(): HTMLDivElement {
   const titlebar = document.createElement('div');
-  titlebar.id = 'alt1gl-titlebar';
+  titlebar.id = 'rs3buddy-titlebar';
 
   const titleText = document.createElement('span');
-  titleText.id = 'alt1gl-title';
+  titleText.id = 'rs3buddy-title';
   titleText.textContent = titlebarTitle;
 
   const closeBtn = document.createElement('button');
-  closeBtn.id = 'alt1gl-close-btn';
+  closeBtn.id = 'rs3buddy-close-btn';
   closeBtn.title = 'Close';
   closeBtn.innerHTML = `
     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -1314,7 +1314,7 @@ function createTitlebarElement(): HTMLDivElement {
 
 /** Inject the titlebar into the current document.body (idempotent) */
 function injectTitlebar(): void {
-  if (document.getElementById('alt1gl-titlebar')) return;
+  if (document.getElementById('rs3buddy-titlebar')) return;
   if (!document.body) return;
 
   ensureTitlebarStyle();
@@ -1329,7 +1329,7 @@ function injectTitlebar(): void {
 function watchTitlebar(): void {
   // Watch document.body for child removal
   const bodyObserver = new MutationObserver(() => {
-    if (!document.getElementById('alt1gl-titlebar') && document.body) {
+    if (!document.getElementById('rs3buddy-titlebar') && document.body) {
       console.log('[Titlebar] Detected removal, re-injecting');
       injectTitlebar();
     }
@@ -1341,7 +1341,7 @@ function watchTitlebar(): void {
 
   // Watch document.documentElement for body replacement (e.g. full page navigation)
   const htmlObserver = new MutationObserver(() => {
-    if (document.body && !document.getElementById('alt1gl-titlebar')) {
+    if (document.body && !document.getElementById('rs3buddy-titlebar')) {
       console.log('[Titlebar] Detected body replacement, re-injecting');
       bodyObserver.disconnect();
       injectTitlebar();
@@ -1353,7 +1353,7 @@ function watchTitlebar(): void {
 
   // Safety net: periodic check every 2 seconds
   setInterval(() => {
-    if (document.body && !document.getElementById('alt1gl-titlebar')) {
+    if (document.body && !document.getElementById('rs3buddy-titlebar')) {
       console.log('[Titlebar] Periodic check: titlebar missing, re-injecting');
       injectTitlebar();
       bodyObserver.disconnect();
@@ -1365,7 +1365,7 @@ function watchTitlebar(): void {
 // Fetch title once, cache it for re-injection
 ipcRenderer.invoke('app-window:get-title').then((title: string) => {
   titlebarTitle = title;
-  const el = document.getElementById('alt1gl-title');
+  const el = document.getElementById('rs3buddy-title');
   if (el) el.textContent = title;
 });
 
@@ -1382,7 +1382,7 @@ if (document.readyState === 'loading') {
 
 // Also re-inject after full page load (some frameworks render late)
 window.addEventListener('load', () => {
-  if (!document.getElementById('alt1gl-titlebar')) {
+  if (!document.getElementById('rs3buddy-titlebar')) {
     console.log('[Titlebar] Re-injecting after window load');
     injectTitlebar();
   }
@@ -1394,7 +1394,7 @@ debug('Preload script complete!');
 declare global {
   interface Window {
     appWindowApi: typeof appWindowApi;
-    alt1gl: any;
+    rs3buddy: any;
     native: any;
   }
 }

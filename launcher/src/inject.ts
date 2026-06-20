@@ -1,6 +1,6 @@
 /**
  * DLL Injection Module
- * Handles loading the native addon and injecting the Alt1GL DLL into the game process
+ * Handles loading the native addon and injecting the RS3Buddy DLL into the game process
  *
  * This module provides a clean interface to:
  * - Load the native addon
@@ -316,9 +316,9 @@ export interface DebugApi {
   setLogCb(cb: (message: string) => void): void;
 }
 
-// Native addon interface (Alt1GlClient from patchrs_napi.ts)
+// Native addon interface (RS3BuddyClient from patchrs_napi.ts)
 export interface NativeAddon {
-  // Alt1 replacement API
+  // RS3Buddy replacement API
   getRsReady(): number;
   getRsX(): number;
   getRsY(): number;
@@ -347,7 +347,7 @@ export interface NativeAddon {
   // Debug API
   debug: DebugApi;
 
-  // Alt1GL overlay library interface (optional, our extension)
+  // RS3Buddy overlay library interface (optional, our extension)
   overlay?: {
     init(width: number, height: number): boolean;
     shutdown(): void;
@@ -665,7 +665,7 @@ export function injectIntoProcess(pid: number, useOverlay: boolean = true): bool
       // Provide clear next steps based on DLL type
       if (prefix === 'overlay') {
         console.log('[Inject] Overlay DLL injected - IPC pipe should be created at:');
-        console.log(`[Inject]   \\\\.\\pipe\\alt1gl-overlay-${pid}`);
+        console.log(`[Inject]   \\\\.\\pipe\\rs3buddy-overlay-${pid}`);
       } else {
         console.log('[Inject] NOTE: Only injected.dll was loaded - no IPC toolbar support');
       }
@@ -1040,8 +1040,8 @@ export async function tryConnectToExistingClient(): Promise<number | null> {
 
     // Check if shared memory exists (overlay is loaded)
     const fs = await import('fs');
-    const shmPath = `/dev/shm/alt1link_${pid}`;
-    const instPath = `/dev/shm/alt1link_${pid}_inst_1`;
+    const shmPath = `/dev/shm/rs3buddylink_${pid}`;
+    const instPath = `/dev/shm/rs3buddylink_${pid}_inst_1`;
 
     if (!fs.existsSync(shmPath)) {
       console.log(`[Inject] No shared memory at ${shmPath} - overlay not loaded for this process`);
@@ -1074,7 +1074,7 @@ export async function tryConnectToExistingClient(): Promise<number | null> {
       // Set injection state so app windows can also connect
       setInjectionState({
         pid,
-        dllPath: '/dev/shm/alt1link_' + pid,  // Virtual path to indicate connection
+        dllPath: '/dev/shm/rs3buddylink_' + pid,  // Virtual path to indicate connection
         instanceId: result.instanceid
       });
 

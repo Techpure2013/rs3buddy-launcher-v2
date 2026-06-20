@@ -275,7 +275,7 @@ export async function downloadAndApplyUpdate(downloadUrl: string): Promise<void>
 
   if (isLinux) {
     // Linux: bash script to wait for exit, then launch new AppImage from desktop
-    const shPath = path.join(tempDir, 'alt1gl-update.sh');
+    const shPath = path.join(tempDir, 'rs3buddy-update.sh');
     const sh = `#!/bin/bash
 # Wait for the launcher process to exit
 while kill -0 ${pid} 2>/dev/null; do sleep 0.5; done
@@ -296,7 +296,7 @@ rm -f "${shPath}"
     }).unref();
   } else {
     // Windows: VBScript to wait for exit, then launch new exe from desktop
-    const vbsPath = path.join(tempDir, 'alt1gl-update.vbs');
+    const vbsPath = path.join(tempDir, 'rs3buddy-update.vbs');
 
     const vbs = [
       'Set wshShell = CreateObject("WScript.Shell")',

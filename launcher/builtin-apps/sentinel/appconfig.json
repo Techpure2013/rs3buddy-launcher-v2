@@ -1,0 +1,12 @@
+{
+  "appName": "Sentinel",
+  "displayName": "Sentinel — Alert Monitor",
+  "description": "AFK-Warden-style alert monitor: watches chat + bars and warns you in-game with sound and overlay banners. Built entirely on the rs3buddy SDK.",
+  "appUrl": "http://127.0.0.1:3100/sentinel/index.html",
+  "configUrl": "http://127.0.0.1:3100/sentinel/appconfig.json",
+  "iconUrl": "http://127.0.0.1:3100/sentinel/icon.png",
+  "defaultWidth": 460,
+  "defaultHeight": 640,
+  "minWidth": 360,
+  "minHeight": 420
+}

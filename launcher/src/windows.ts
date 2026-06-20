@@ -265,15 +265,15 @@ export function createAppWindow(appConfig: InstalledApp, gamePid?: number): Brow
     gamePid: associatedGamePid
   });
 
-  // Add custom headers to mimic Alt1/browser requests
+  // Add custom headers to mimic browser requests
   // This fixes 403 errors from servers that check User-Agent or Referer
   appWindow.webContents.session.webRequest.onBeforeSendHeaders(
     { urls: ['*://*/*'] },
     (details, callback) => {
       const headers = { ...details.requestHeaders };
 
-      // Set User-Agent to look like Alt1
-      headers['User-Agent'] = 'Alt1/1.0 (Alt1GL Launcher)';
+      // Set User-Agent to identify the RS3Buddy launcher
+      headers['User-Agent'] = 'RS3Buddy/1.0 (RS3Buddy Launcher)';
 
       // Set Referer for runeapps.org requests
       if (details.url.includes('runeapps.org')) {
@@ -281,9 +281,9 @@ export function createAppWindow(appConfig: InstalledApp, gamePid?: number): Brow
         headers['Origin'] = 'https://runeapps.org';
       }
 
-      // For all HTTPS requests from alt1-builtin:// origin, set Origin to match
+      // For all HTTPS requests from rs3buddy-builtin:// origin, set Origin to match
       // the target URL's origin. This prevents CORS preflight failures when
-      // servers don't recognize alt1-builtin:// as a valid origin.
+      // servers don't recognize rs3buddy-builtin:// as a valid origin.
       if (details.url.startsWith('https://')) {
         try {
           const targetOrigin = new URL(details.url).origin;
@@ -303,21 +303,21 @@ export function createAppWindow(appConfig: InstalledApp, gamePid?: number): Brow
 
       // Add CSP
       responseHeaders['Content-Security-Policy'] = [
-            "default-src 'self' alt1-builtin: https: http://localhost http://127.0.0.1; " +
-            "script-src 'self' alt1-builtin: https: 'unsafe-inline' 'unsafe-eval'; " +
-            "style-src 'self' alt1-builtin: https: 'unsafe-inline'; " +
-            "img-src 'self' alt1-builtin: https: http: data: blob:; " +
-            "connect-src 'self' alt1-builtin: https: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; " +
-            "font-src 'self' alt1-builtin: https: data:; " +
+            "default-src 'self' rs3buddy-builtin: https: http://localhost http://127.0.0.1; " +
+            "script-src 'self' rs3buddy-builtin: https: 'unsafe-inline' 'unsafe-eval'; " +
+            "style-src 'self' rs3buddy-builtin: https: 'unsafe-inline'; " +
+            "img-src 'self' rs3buddy-builtin: https: http: data: blob:; " +
+            "connect-src 'self' rs3buddy-builtin: https: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; " +
+            "font-src 'self' rs3buddy-builtin: https: data:; " +
             "object-src 'none'; " +
             "base-uri 'self'"
       ];
 
-      // Inject/override CORS headers for cross-origin API requests from alt1-builtin:// origin.
+      // Inject/override CORS headers for cross-origin API requests from rs3buddy-builtin:// origin.
       // The browser compares the response ACAO header against the page's real origin
-      // (alt1-builtin://app-name), so we must always set ACAO to * regardless of what
+      // (rs3buddy-builtin://app-name), so we must always set ACAO to * regardless of what
       // the server sends back. Servers that echo the Origin header would return
-      // ACAO: https://example.com which doesn't match alt1-builtin://.
+      // ACAO: https://example.com which doesn't match rs3buddy-builtin://.
       if (details.url.startsWith('https://') && details.resourceType !== 'mainFrame') {
         // Remove any existing ACAO header (case-insensitive) before setting ours
         for (const key of Object.keys(responseHeaders)) {
@@ -360,7 +360,7 @@ export function createAppWindow(appConfig: InstalledApp, gamePid?: number): Brow
   // Security: Validate app URL scheme before loading
   const appUrl = appConfig.appUrl;
   const isAllowedScheme =
-    appUrl.startsWith('alt1-builtin://') ||
+    appUrl.startsWith('rs3buddy-builtin://') ||
     appUrl.startsWith('https://') ||
     appUrl.startsWith('http://localhost') ||
     appUrl.startsWith('http://127.0.0.1');
@@ -374,7 +374,7 @@ export function createAppWindow(appConfig: InstalledApp, gamePid?: number): Brow
   // Security: Restrict navigation to the app's own origin and allowed schemes
   appWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const allowed =
-      navigationUrl.startsWith('alt1-builtin://') ||
+      navigationUrl.startsWith('rs3buddy-builtin://') ||
       navigationUrl.startsWith(appUrl.split('/').slice(0, 3).join('/')) || // same origin
       navigationUrl.startsWith('http://localhost') ||
       navigationUrl.startsWith('http://127.0.0.1');
@@ -387,7 +387,7 @@ export function createAppWindow(appConfig: InstalledApp, gamePid?: number): Brow
   // Handle window.open calls from app windows
   appWindow.webContents.setWindowOpenHandler(({ url, features }) => {
     const allowed =
-      url.startsWith('alt1-builtin://') ||
+      url.startsWith('rs3buddy-builtin://') ||
       url.startsWith('https://') ||
       url.startsWith('http://localhost') ||
       url.startsWith('http://127.0.0.1') ||
@@ -530,7 +530,7 @@ function imageBufferToRgba(nativeImage: typeof import('electron').nativeImage, b
 
 /**
  * Fetch an app icon and convert it to RGBA pixels
- * Handles http://, https://, file://, and alt1-builtin:// URLs
+ * Handles http://, https://, file://, and rs3buddy-builtin:// URLs
  */
 async function fetchAppIconPixels(iconUrl: string): Promise<Uint8Array | null> {
   try {
@@ -561,8 +561,8 @@ async function fetchAppIconPixels(iconUrl: string): Promise<Uint8Array | null> {
       }
     }
 
-    // Handle alt1-builtin:// URLs - resolve to local file
-    if (iconUrl.startsWith('alt1-builtin://')) {
+    // Handle rs3buddy-builtin:// URLs - resolve to local file
+    if (iconUrl.startsWith('rs3buddy-builtin://')) {
       try {
         const url = new URL(iconUrl);
         const appName = url.hostname;
@@ -588,7 +588,7 @@ async function fetchAppIconPixels(iconUrl: string): Promise<Uint8Array | null> {
         const buffer = fs.readFileSync(fullPath);
         return imageBufferToRgba(nativeImage, buffer);
       } catch (e) {
-        console.log(`[Overlay] Error loading alt1-builtin:// icon: ${e}`);
+        console.log(`[Overlay] Error loading rs3buddy-builtin:// icon: ${e}`);
         return null;
       }
     }
@@ -1194,11 +1194,11 @@ export function onGameStarted(pid: number): void {
   // Log native addon state for debugging (optional, non-critical)
   if (process.platform !== 'linux') {
     try {
-      const alt1gl = require('./alt1gl');
-      alt1gl.logNativeState();
+      const rs3buddy = require('./rs3buddy');
+      rs3buddy.logNativeState();
     } catch (e) {
-      // alt1gl module may not exist - this is optional debug logging
-      console.log('[Windows] alt1gl debug module not available (this is OK)');
+      // rs3buddy module may not exist - this is optional debug logging
+      console.log('[Windows] rs3buddy debug module not available (this is OK)');
     }
   }
 
@@ -1365,7 +1365,7 @@ export function initAppWindowIpc(): void {
   };
 
   // App data persistence - allows builtin apps to read/write JSON files
-  // Files stored in userData/alt1gl/app-data/{appName}/
+  // Files stored in userData/rs3buddy/app-data/{appName}/
   ipcMain.handle('app-data:write', async (_event: IpcMainInvokeEvent, appName: string, filename: string, data: string): Promise<boolean> => {
     try {
       const { app } = require('electron');
@@ -1375,7 +1375,7 @@ export function initAppWindowIpc(): void {
         console.error('[app-data:write] SECURITY: Invalid app name or filename after sanitization');
         return false;
       }
-      const baseDir = path.resolve(app.getPath('userData'), 'alt1gl', 'app-data');
+      const baseDir = path.resolve(app.getPath('userData'), 'rs3buddy', 'app-data');
       const dir = path.join(baseDir, safeAppName);
       const fullPath = path.resolve(path.join(dir, safeFilename));
       if (!fullPath.startsWith(baseDir)) {
@@ -1400,7 +1400,7 @@ export function initAppWindowIpc(): void {
         console.error('[app-data:read] SECURITY: Invalid app name or filename after sanitization');
         return null;
       }
-      const baseDir = path.resolve(app.getPath('userData'), 'alt1gl', 'app-data');
+      const baseDir = path.resolve(app.getPath('userData'), 'rs3buddy', 'app-data');
       const filePath = path.resolve(path.join(baseDir, safeAppName, safeFilename));
       if (!filePath.startsWith(baseDir)) {
         console.error('[app-data:read] SECURITY: Path traversal blocked:', filePath);

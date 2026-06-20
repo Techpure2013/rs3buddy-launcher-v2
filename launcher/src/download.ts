@@ -1429,7 +1429,7 @@ export function getJagexLauncherInstallInstructions(): string {
 1. Click "Download & Install" to download the installer
 2. Run the downloaded installer
 3. Follow the installation prompts
-4. Restart Alt1GL Launcher to detect the installation`;
+4. Restart RS3Buddy Launcher to detect the installation`;
   }
 
   if (isLinux) {

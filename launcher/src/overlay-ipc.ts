@@ -1,8 +1,8 @@
 /**
  * Overlay IPC Client
  * Communicates with the injected overlay via:
- * - Windows: Named pipes (\\.\pipe\alt1gl-overlay-{pid})
- * - Linux: Unix domain sockets (/tmp/alt1gl-overlay-{pid})
+ * - Windows: Named pipes (\\.\pipe\rs3buddy-overlay-{pid})
+ * - Linux: Unix domain sockets (/tmp/rs3buddy-overlay-{pid})
  */
 
 import * as net from 'net';
@@ -15,10 +15,10 @@ const isLinux = process.platform === 'linux';
 // Get the appropriate socket/pipe path for the platform
 function getSocketPath(pid: number): string {
   if (isWindows) {
-    return `\\\\.\\pipe\\alt1gl-overlay-${pid}`;
+    return `\\\\.\\pipe\\rs3buddy-overlay-${pid}`;
   } else {
     // Linux uses Unix domain sockets in /tmp
-    return `/tmp/alt1gl-overlay-${pid}`;
+    return `/tmp/rs3buddy-overlay-${pid}`;
   }
 }
 
@@ -158,11 +158,11 @@ class OverlayIpcClient {
       if (isWindows) {
         // Windows: Check if pipe exists using powershell
         const { exec } = require('child_process');
-        exec(`powershell -Command "Get-ChildItem \\\\.\\pipe\\ | Where-Object { $_.Name -like '*alt1gl*' } | Select-Object -ExpandProperty Name"`, (error: any, stdout: string, stderr: string) => {
+        exec(`powershell -Command "Get-ChildItem \\\\.\\pipe\\ | Where-Object { $_.Name -like '*rs3buddy*' } | Select-Object -ExpandProperty Name"`, (error: any, stdout: string, stderr: string) => {
           if (stdout.trim()) {
-            console.log(`[OverlayIPC] Found Alt1GL pipes: ${stdout.trim().split('\n').join(', ')}`);
+            console.log(`[OverlayIPC] Found RS3Buddy pipes: ${stdout.trim().split('\n').join(', ')}`);
           } else {
-            console.log('[OverlayIPC] No Alt1GL pipes found in system');
+            console.log('[OverlayIPC] No RS3Buddy pipes found in system');
           }
         });
       } else {

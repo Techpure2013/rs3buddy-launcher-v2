@@ -3,17 +3,17 @@
 // src/app-window/preload-isolated.ts
 var import_electron = require("electron");
 var cachedState = { ready: 0, x: 0, y: 0, width: 0, height: 0, hwnd: 0 };
-import_electron.ipcRenderer.invoke("alt1gl:state:subscribe").then((state) => {
+import_electron.ipcRenderer.invoke("rs3buddy:state:subscribe").then((state) => {
   if (state)
     cachedState = state;
 }).catch(() => {
 });
-import_electron.ipcRenderer.on("alt1gl:state:update", (_e, state) => {
+import_electron.ipcRenderer.on("rs3buddy:state:update", (_e, state) => {
   cachedState = state;
 });
-var DISPOSE = "alt1gl:handle:dispose";
+var DISPOSE = "rs3buddy:handle:dispose";
 function invokeHandleSync(handleId, method, args = []) {
-  const result = import_electron.ipcRenderer.sendSync("alt1gl:handle:invokeSync", { handleId, method, args });
+  const result = import_electron.ipcRenderer.sendSync("rs3buddy:handle:invokeSync", { handleId, method, args });
   if (result && result.error)
     throw new Error(result.error);
   return result?.data;
@@ -24,7 +24,7 @@ function toImageData(r) {
   return new ImageData(new Uint8ClampedArray(r.data), r.width, r.height);
 }
 function batchInvokeSync(requests) {
-  return import_electron.ipcRenderer.sendSync("alt1gl:handle:batchInvokeSync", requests);
+  return import_electron.ipcRenderer.sendSync("rs3buddy:handle:batchInvokeSync", requests);
 }
 function hydrateTrackedTexture(s) {
   if (!s)
@@ -91,7 +91,7 @@ function hydrateGlOverlay(s) {
 var streamCallbacks = /* @__PURE__ */ new Map();
 var streamEndedCallbacks = /* @__PURE__ */ new Map();
 var pendingStreamData = /* @__PURE__ */ new Map();
-import_electron.ipcRenderer.on("alt1gl:callback:streamData", (_e, data) => {
+import_electron.ipcRenderer.on("rs3buddy:callback:streamData", (_e, data) => {
   const cb = streamCallbacks.get(data.streamId);
   if (cb) {
     cb(data.renders);
@@ -104,7 +104,7 @@ import_electron.ipcRenderer.on("alt1gl:callback:streamData", (_e, data) => {
     pending.push(data.renders);
   }
 });
-import_electron.ipcRenderer.on("alt1gl:callback:streamEnded", (_e, data) => {
+import_electron.ipcRenderer.on("rs3buddy:callback:streamEnded", (_e, data) => {
   streamCallbacks.delete(data.streamId);
   pendingStreamData.delete(data.streamId);
   const endCb = streamEndedCallbacks.get(data.streamId);
@@ -114,16 +114,16 @@ import_electron.ipcRenderer.on("alt1gl:callback:streamEnded", (_e, data) => {
   }
 });
 var glLogCallback = null;
-import_electron.ipcRenderer.on("alt1gl:callback:glLog", (_e, packet) => {
+import_electron.ipcRenderer.on("rs3buddy:callback:glLog", (_e, packet) => {
   if (glLogCallback)
     glLogCallback(packet);
 });
 var debugLogCallback = null;
-import_electron.ipcRenderer.on("alt1gl:callback:debugLog", (_e, data) => {
+import_electron.ipcRenderer.on("rs3buddy:callback:debugLog", (_e, data) => {
   if (debugLogCallback)
     debugLogCallback(data.message);
 });
-var alt1glProxy = {
+var rs3buddyProxy = {
   // --- Cached sync values ---
   getRsReady: () => cachedState.ready,
   getRsX: () => cachedState.x,
@@ -133,17 +133,17 @@ var alt1glProxy = {
   getRsHwnd: () => cachedState.hwnd,
   // --- Async root methods ---
   capture: async (texid, x, y, w, h) => {
-    const r = await import_electron.ipcRenderer.invoke("alt1gl:root:capture", texid, x, y, w, h);
+    const r = await import_electron.ipcRenderer.invoke("rs3buddy:root:capture", texid, x, y, w, h);
     if (!r || !r.width || !r.height)
       return null;
     return { width: r.width, height: r.height, data: r.data };
   },
-  getRenderer: () => import_electron.ipcRenderer.invoke("alt1gl:root:getRenderer"),
+  getRenderer: () => import_electron.ipcRenderer.invoke("rs3buddy:root:getRenderer"),
   getOpenGlState: async () => {
-    return await import_electron.ipcRenderer.invoke("alt1gl:root:getOpenGlState");
+    return await import_electron.ipcRenderer.invoke("rs3buddy:root:getOpenGlState");
   },
   recordRenderCalls: async (options) => {
-    return await import_electron.ipcRenderer.invoke("alt1gl:gl:recordRenderCalls", options) || [];
+    return await import_electron.ipcRenderer.invoke("rs3buddy:gl:recordRenderCalls", options) || [];
   },
   streamRenderCalls: (options, callback) => {
     let streamId = null;
@@ -152,7 +152,7 @@ var alt1glProxy = {
     const endedPromise = new Promise((resolve) => {
       resolveEnded = resolve;
     });
-    const startPromise = import_electron.ipcRenderer.invoke("alt1gl:stream:start", options).then((result) => {
+    const startPromise = import_electron.ipcRenderer.invoke("rs3buddy:stream:start", options).then((result) => {
       streamId = result.streamId;
       streamCallbacks.set(streamId, callback);
       streamEndedCallbacks.set(streamId, () => {
@@ -168,7 +168,7 @@ var alt1glProxy = {
       }
       return result;
     }).catch((err) => {
-      console.error("[alt1gl] Stream start failed:", err);
+      console.error("[rs3buddy] Stream start failed:", err);
       ended = true;
       resolveEnded();
       throw err;
@@ -181,7 +181,7 @@ var alt1glProxy = {
           streamCallbacks.delete(streamId);
           streamEndedCallbacks.delete(streamId);
           pendingStreamData.delete(streamId);
-          await import_electron.ipcRenderer.invoke("alt1gl:stream:close", streamId);
+          await import_electron.ipcRenderer.invoke("rs3buddy:stream:close", streamId);
           ended = true;
           resolveEnded();
         }
@@ -193,28 +193,28 @@ var alt1glProxy = {
   setGlLogCb: (cb) => {
     glLogCallback = cb;
     if (cb) {
-      import_electron.ipcRenderer.invoke("alt1gl:callback:subscribeGlLog");
+      import_electron.ipcRenderer.invoke("rs3buddy:callback:subscribeGlLog");
     } else {
-      import_electron.ipcRenderer.invoke("alt1gl:callback:unsubscribeGlLog");
+      import_electron.ipcRenderer.invoke("rs3buddy:callback:unsubscribeGlLog");
     }
   },
-  getGlLogToggles: () => import_electron.ipcRenderer.invoke("alt1gl:root:getGlLogToggles"),
-  setGlLogToggles: (arr) => import_electron.ipcRenderer.invoke("alt1gl:root:setGlLogToggles", arr),
+  getGlLogToggles: () => import_electron.ipcRenderer.invoke("rs3buddy:root:getGlLogToggles"),
+  setGlLogToggles: (arr) => import_electron.ipcRenderer.invoke("rs3buddy:root:setGlLogToggles", arr),
   // --- Overlay / Creation (synchronous via sendSync) ---
   createProgram: (vertexShader, fragmentShader, inputs, uniforms) => {
-    const result = import_electron.ipcRenderer.sendSync("alt1gl:overlay:createProgramSync", vertexShader, fragmentShader, inputs, uniforms);
+    const result = import_electron.ipcRenderer.sendSync("rs3buddy:overlay:createProgramSync", vertexShader, fragmentShader, inputs, uniforms);
     if (result && result.error)
       throw new Error(result.error);
     return hydrateGlProgram(result?.data);
   },
   createVertexArray: (indexBuffer, inputs) => {
-    const result = import_electron.ipcRenderer.sendSync("alt1gl:overlay:createVertexArraySync", indexBuffer, inputs);
+    const result = import_electron.ipcRenderer.sendSync("rs3buddy:overlay:createVertexArraySync", indexBuffer, inputs);
     if (result && result.error)
       throw new Error(result.error);
     return hydrateVertexArraySnapshot(result?.data);
   },
   createTexture: (img) => {
-    const result = import_electron.ipcRenderer.sendSync("alt1gl:overlay:createTextureSync", {
+    const result = import_electron.ipcRenderer.sendSync("rs3buddy:overlay:createTextureSync", {
       width: img.width,
       height: img.height,
       data: img.data
@@ -234,23 +234,23 @@ var alt1glProxy = {
       }
       delete optsCopy.samplers;
     }
-    const result = import_electron.ipcRenderer.sendSync("alt1gl:overlay:beginOverlaySync", trigger, progHandleId, vasHandleId, optsCopy);
+    const result = import_electron.ipcRenderer.sendSync("rs3buddy:overlay:beginOverlaySync", trigger, progHandleId, vasHandleId, optsCopy);
     if (result && result.error)
       throw new Error(result.error);
     return hydrateGlOverlay(result?.data);
   },
   // --- Mouse Position ---
-  getMousePosition: () => import_electron.ipcRenderer.invoke("alt1gl:mouse:getPosition"),
+  getMousePosition: () => import_electron.ipcRenderer.invoke("rs3buddy:mouse:getPosition"),
   // Compatibility shim: some apps access overlay.getMousePosition
   overlay: {
-    getMousePosition: () => import_electron.ipcRenderer.invoke("alt1gl:mouse:getPosition")
+    getMousePosition: () => import_electron.ipcRenderer.invoke("rs3buddy:mouse:getPosition")
   },
   // --- Handle Bridge (for renderer-world shim) ---
   __invokeHandleSync: (handleId, method, args) => {
     return invokeHandleSync(handleId, method, args || []);
   },
   __batchInvokeSync: (requests) => {
-    const results = import_electron.ipcRenderer.sendSync("alt1gl:handle:batchInvokeSync", requests);
+    const results = import_electron.ipcRenderer.sendSync("rs3buddy:handle:batchInvokeSync", requests);
     return results;
   },
   __disposeHandle: (handleId) => {
@@ -258,28 +258,28 @@ var alt1glProxy = {
   },
   // --- Debug API ---
   debug: {
-    getCurrentWorkingDirectory: () => import_electron.ipcRenderer.invoke("alt1gl:debug:getCwd"),
-    readDirSync: (dir) => import_electron.ipcRenderer.invoke("alt1gl:debug:readDir", dir),
-    readFileSync: (file) => import_electron.ipcRenderer.invoke("alt1gl:debug:readFile", file),
-    copyFileSync: (from, to) => import_electron.ipcRenderer.invoke("alt1gl:debug:copyFile", from, to),
-    statSync: (file) => import_electron.ipcRenderer.invoke("alt1gl:debug:stat", file),
-    getExePids: (name, parent) => import_electron.ipcRenderer.invoke("alt1gl:debug:getExePids", name, parent),
-    injectDll: (pid, dllfile, memoryid, instanceid) => import_electron.ipcRenderer.invoke("alt1gl:debug:injectDll", pid, dllfile, memoryid, instanceid),
-    connectToOverlay: (pid) => import_electron.ipcRenderer.invoke("alt1gl:debug:connectOverlay", pid),
-    exitDll: () => import_electron.ipcRenderer.invoke("alt1gl:debug:exitDll"),
-    getRsHwnd: () => import_electron.ipcRenderer.invoke("alt1gl:debug:getRsHwnd"),
-    memoryState: () => import_electron.ipcRenderer.invoke("alt1gl:debug:memoryState"),
-    handleStoreStats: () => import_electron.ipcRenderer.invoke("alt1gl:debug:handleStoreStats"),
-    disposeAllHandles: () => import_electron.ipcRenderer.invoke("alt1gl:debug:disposeAllHandles"),
-    getSharedMemorySizes: () => import_electron.ipcRenderer.invoke("alt1gl:debug:getSharedMemorySizes"),
-    getAllGlObjects: () => import_electron.ipcRenderer.invoke("alt1gl:debug:getAllGlObjects"),
-    getGlObjectStats: () => import_electron.ipcRenderer.invoke("alt1gl:debug:getGlObjectStats"),
-    resetOpenGlState: () => import_electron.ipcRenderer.invoke("alt1gl:debug:resetOpenGlState"),
-    killMemorySession: () => import_electron.ipcRenderer.invoke("alt1gl:debug:killMemorySession"),
-    testRecordRenderCalls: () => import_electron.ipcRenderer.invoke("alt1gl:debug:testRecordRenderCalls"),
+    getCurrentWorkingDirectory: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:getCwd"),
+    readDirSync: (dir) => import_electron.ipcRenderer.invoke("rs3buddy:debug:readDir", dir),
+    readFileSync: (file) => import_electron.ipcRenderer.invoke("rs3buddy:debug:readFile", file),
+    copyFileSync: (from, to) => import_electron.ipcRenderer.invoke("rs3buddy:debug:copyFile", from, to),
+    statSync: (file) => import_electron.ipcRenderer.invoke("rs3buddy:debug:stat", file),
+    getExePids: (name, parent) => import_electron.ipcRenderer.invoke("rs3buddy:debug:getExePids", name, parent),
+    injectDll: (pid, dllfile, memoryid, instanceid) => import_electron.ipcRenderer.invoke("rs3buddy:debug:injectDll", pid, dllfile, memoryid, instanceid),
+    connectToOverlay: (pid) => import_electron.ipcRenderer.invoke("rs3buddy:debug:connectOverlay", pid),
+    exitDll: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:exitDll"),
+    getRsHwnd: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:getRsHwnd"),
+    memoryState: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:memoryState"),
+    handleStoreStats: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:handleStoreStats"),
+    disposeAllHandles: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:disposeAllHandles"),
+    getSharedMemorySizes: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:getSharedMemorySizes"),
+    getAllGlObjects: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:getAllGlObjects"),
+    getGlObjectStats: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:getGlObjectStats"),
+    resetOpenGlState: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:resetOpenGlState"),
+    killMemorySession: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:killMemorySession"),
+    testRecordRenderCalls: () => import_electron.ipcRenderer.invoke("rs3buddy:debug:testRecordRenderCalls"),
     setLogCb: (cb) => {
       debugLogCallback = cb;
-      import_electron.ipcRenderer.invoke("alt1gl:debug:setLogCb", !!cb);
+      import_electron.ipcRenderer.invoke("rs3buddy:debug:setLogCb", !!cb);
     }
   }
 };
@@ -446,14 +446,14 @@ var hotkeyApi = {
     return await import_electron.ipcRenderer.invoke("focus:setGlobalOverride", allow);
   }
 };
-import_electron.contextBridge.exposeInMainWorld("_alt1gl", alt1glProxy);
+import_electron.contextBridge.exposeInMainWorld("_rs3buddy", rs3buddyProxy);
 import_electron.contextBridge.exposeInMainWorld("appWindowApi", appWindowApi);
-import_electron.contextBridge.exposeInMainWorld("alt1Hotkeys", hotkeyApi);
-console.log("[PreloadIsolated] APIs exposed via contextBridge (_alt1gl bridge)");
+import_electron.contextBridge.exposeInMainWorld("rs3buddyHotkeys", hotkeyApi);
+console.log("[PreloadIsolated] APIs exposed via contextBridge (_rs3buddy bridge)");
 var RENDERER_SHIM = `
 (function() {
-  var _real = window._alt1gl;
-  if (!_real) { console.error('[alt1gl-shim] _alt1gl bridge not found!'); return; }
+  var _real = window._rs3buddy;
+  if (!_real) { console.error('[rs3buddy-shim] _rs3buddy bridge not found!'); return; }
 
   // --- ImageData reconstruction ---
   function toImageData(r) {
@@ -560,8 +560,8 @@ var RENDERER_SHIM = `
     return r;
   }
 
-  // --- Create mutable window.alt1gl wrapping frozen _alt1gl bridge ---
-  var alt1 = {
+  // --- Create mutable window.rs3buddy wrapping frozen _rs3buddy bridge ---
+  var rs3buddyApi = {
     // Sync getters (cached state)
     getRsReady: function() { return _real.getRsReady(); },
     getRsX: function() { return _real.getRsX(); },
@@ -717,8 +717,8 @@ var RENDERER_SHIM = `
     },
   };
 
-  window.alt1gl = alt1;
-  console.log('[alt1gl-shim] Renderer-world API active (mutable wrapper over _alt1gl bridge)');
+  window.rs3buddy = rs3buddyApi;
+  console.log('[rs3buddy-shim] Renderer-world API active (mutable wrapper over _rs3buddy bridge)');
 })();
 `;
 import_electron.webFrame.executeJavaScript(RENDERER_SHIM).catch((err) => {
@@ -731,7 +731,7 @@ import_electron.webFrame.executeJavaScript(RENDERER_SHIM).catch((err) => {
 var titlebarTitle = "Loading...";
 var titlebarStyleElement = null;
 var TITLEBAR_CSS = `
-  #alt1gl-titlebar {
+  #rs3buddy-titlebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -750,7 +750,7 @@ var TITLEBAR_CSS = `
     will-change: transform;
     contain: layout style;
   }
-  #alt1gl-title {
+  #rs3buddy-title {
     color: rgba(255, 255, 255, 0.9);
     font-size: 12px;
     font-weight: 500;
@@ -760,7 +760,7 @@ var TITLEBAR_CSS = `
     flex: 1;
     -webkit-app-region: drag;
   }
-  #alt1gl-close-btn {
+  #rs3buddy-close-btn {
     width: 24px;
     height: 24px;
     border: none;
@@ -775,18 +775,18 @@ var TITLEBAR_CSS = `
     flex-shrink: 0;
     -webkit-app-region: no-drag;
   }
-  #alt1gl-close-btn:hover {
+  #rs3buddy-close-btn:hover {
     background: #e81123;
     color: #ffffff;
   }
-  #alt1gl-close-btn:active {
+  #rs3buddy-close-btn:active {
     background: #c50f1f;
   }
-  #alt1gl-close-btn svg {
+  #rs3buddy-close-btn svg {
     width: 12px;
     height: 12px;
   }
-  #alt1gl-minimize-btn {
+  #rs3buddy-minimize-btn {
     width: 24px;
     height: 24px;
     border: none;
@@ -802,14 +802,14 @@ var TITLEBAR_CSS = `
     -webkit-app-region: no-drag;
     margin-right: 2px;
   }
-  #alt1gl-minimize-btn:hover {
+  #rs3buddy-minimize-btn:hover {
     background: rgba(255, 255, 255, 0.15);
     color: #ffffff;
   }
-  #alt1gl-minimize-btn:active {
+  #rs3buddy-minimize-btn:active {
     background: rgba(255, 255, 255, 0.25);
   }
-  #alt1gl-minimize-btn svg {
+  #rs3buddy-minimize-btn svg {
     width: 12px;
     height: 12px;
   }
@@ -829,19 +829,19 @@ function ensureTitlebarStyle() {
   if (titlebarStyleElement && titlebarStyleElement.parentNode)
     return;
   titlebarStyleElement = document.createElement("style");
-  titlebarStyleElement.id = "alt1gl-titlebar-style";
+  titlebarStyleElement.id = "rs3buddy-titlebar-style";
   titlebarStyleElement.textContent = TITLEBAR_CSS;
   if (document.head)
     document.head.appendChild(titlebarStyleElement);
 }
 function createTitlebarElement() {
   const titlebar = document.createElement("div");
-  titlebar.id = "alt1gl-titlebar";
+  titlebar.id = "rs3buddy-titlebar";
   const titleText = document.createElement("span");
-  titleText.id = "alt1gl-title";
+  titleText.id = "rs3buddy-title";
   titleText.textContent = titlebarTitle;
   const minimizeBtn = document.createElement("button");
-  minimizeBtn.id = "alt1gl-minimize-btn";
+  minimizeBtn.id = "rs3buddy-minimize-btn";
   minimizeBtn.title = "Minimize";
   minimizeBtn.innerHTML = `
     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -850,7 +850,7 @@ function createTitlebarElement() {
   `;
   minimizeBtn.addEventListener("click", () => import_electron.ipcRenderer.send("app-window:minimize"));
   const closeBtn = document.createElement("button");
-  closeBtn.id = "alt1gl-close-btn";
+  closeBtn.id = "rs3buddy-close-btn";
   closeBtn.title = "Close";
   closeBtn.innerHTML = `
     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -864,7 +864,7 @@ function createTitlebarElement() {
   return titlebar;
 }
 function injectTitlebar() {
-  if (document.getElementById("alt1gl-titlebar"))
+  if (document.getElementById("rs3buddy-titlebar"))
     return;
   if (!document.body)
     return;
@@ -873,14 +873,14 @@ function injectTitlebar() {
 }
 function watchTitlebar() {
   const bodyObserver = new MutationObserver(() => {
-    if (!document.getElementById("alt1gl-titlebar") && document.body) {
+    if (!document.getElementById("rs3buddy-titlebar") && document.body) {
       injectTitlebar();
     }
   });
   if (document.body)
     bodyObserver.observe(document.body, { childList: true });
   const htmlObserver = new MutationObserver(() => {
-    if (document.body && !document.getElementById("alt1gl-titlebar")) {
+    if (document.body && !document.getElementById("rs3buddy-titlebar")) {
       bodyObserver.disconnect();
       injectTitlebar();
       bodyObserver.observe(document.body, { childList: true });
@@ -888,7 +888,7 @@ function watchTitlebar() {
   });
   htmlObserver.observe(document.documentElement, { childList: true });
   setInterval(() => {
-    if (document.body && !document.getElementById("alt1gl-titlebar")) {
+    if (document.body && !document.getElementById("rs3buddy-titlebar")) {
       injectTitlebar();
       bodyObserver.disconnect();
       bodyObserver.observe(document.body, { childList: true });
@@ -897,7 +897,7 @@ function watchTitlebar() {
 }
 import_electron.ipcRenderer.invoke("app-window:get-title").then((title) => {
   titlebarTitle = title;
-  const el = document.getElementById("alt1gl-title");
+  const el = document.getElementById("rs3buddy-title");
   if (el)
     el.textContent = title;
 });
@@ -911,6 +911,6 @@ if (document.readyState === "loading") {
   watchTitlebar();
 }
 window.addEventListener("load", () => {
-  if (!document.getElementById("alt1gl-titlebar"))
+  if (!document.getElementById("rs3buddy-titlebar"))
     injectTitlebar();
 });

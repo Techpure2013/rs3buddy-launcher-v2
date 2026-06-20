@@ -387,9 +387,9 @@ export function initIpcHandlers(): void {
     return { success: false, error: 'Path does not exist' };
   });
 
-  ipcMain.handle('set-alt1gl-lib-path', (_event: IpcMainInvokeEvent, newPath: string): Result => {
+  ipcMain.handle('set-rs3buddy-lib-path', (_event: IpcMainInvokeEvent, newPath: string): Result => {
     if (fs.existsSync(newPath)) {
-      setConfig({ alt1glLibPath: newPath });
+      setConfig({ rs3buddyLibPath: newPath });
       return { success: true };
     }
     return { success: false, error: 'Path does not exist' };
@@ -798,61 +798,61 @@ export function initIpcHandlers(): void {
   initNewsAndHiscoresHandlers();
 
   // ============================================
-  // Alt1 Compatibility API (for legacy Alt1 apps)
-  // Note: Most Alt1GL API is now accessed directly via native addon
-  // These are kept for apps using the Alt1-style overlay API
+  // RS3Buddy Compatibility API (for legacy RS3Buddy apps)
+  // Note: Most RS3Buddy API is now accessed directly via native addon
+  // These are kept for apps using the RS3Buddy-style overlay API
   // ============================================
 
-  // Store active overlays by group (for Alt1 compat layer)
+  // Store active overlays by group (for RS3Buddy compat layer)
   const overlayGroups = new Map<string, any[]>();
 
-  ipcMain.handle('alt1:overlayTextEx', async (
+  ipcMain.handle('rs3buddy:overlayTextEx', async (
     _event: IpcMainInvokeEvent,
     data: { str: string; color: number; size: number; x: number; y: number; time: number; fontname: string; centered: boolean; shadow: boolean; group: string }
   ): Promise<boolean> => {
     try {
-      console.log(`[Alt1Compat] overlayTextEx "${data.str}" at (${data.x}, ${data.y}) font=${data.fontname}`);
+      console.log(`[RS3BuddyCompat] overlayTextEx "${data.str}" at (${data.x}, ${data.y}) font=${data.fontname}`);
       return true;
     } catch (e) {
-      console.error('[Alt1Compat] overlayTextEx failed:', e);
+      console.error('[RS3BuddyCompat] overlayTextEx failed:', e);
       return false;
     }
   });
 
-  ipcMain.handle('alt1:overlayLine', async (
+  ipcMain.handle('rs3buddy:overlayLine', async (
     _event: IpcMainInvokeEvent,
     data: { color: number; width: number; x1: number; y1: number; x2: number; y2: number; time: number; group: string }
   ): Promise<boolean> => {
     try {
-      console.log(`[Alt1Compat] overlayLine from (${data.x1}, ${data.y1}) to (${data.x2}, ${data.y2})`);
+      console.log(`[RS3BuddyCompat] overlayLine from (${data.x1}, ${data.y1}) to (${data.x2}, ${data.y2})`);
       return true;
     } catch (e) {
-      console.error('[Alt1Compat] overlayLine failed:', e);
+      console.error('[RS3BuddyCompat] overlayLine failed:', e);
       return false;
     }
   });
 
-  ipcMain.handle('alt1:overlayImage', async (
+  ipcMain.handle('rs3buddy:overlayImage', async (
     _event: IpcMainInvokeEvent,
     data: { x: number; y: number; imgstr: string; imgwidth: number; time: number; group: string }
   ): Promise<boolean> => {
     try {
-      console.log(`[Alt1Compat] overlayImage at (${data.x}, ${data.y}) width=${data.imgwidth}`);
+      console.log(`[RS3BuddyCompat] overlayImage at (${data.x}, ${data.y}) width=${data.imgwidth}`);
       return true;
     } catch (e) {
-      console.error('[Alt1Compat] overlayImage failed:', e);
+      console.error('[RS3BuddyCompat] overlayImage failed:', e);
       return false;
     }
   });
 
-  ipcMain.handle('alt1:overlayRefreshGroup', async (
+  ipcMain.handle('rs3buddy:overlayRefreshGroup', async (
     _event: IpcMainInvokeEvent,
     group: string
   ): Promise<void> => {
-    console.log(`[Alt1Compat] overlayRefreshGroup: ${group}`);
+    console.log(`[RS3BuddyCompat] overlayRefreshGroup: ${group}`);
   });
 
-  ipcMain.handle('alt1:overlayClearGroup', async (
+  ipcMain.handle('rs3buddy:overlayClearGroup', async (
     _event: IpcMainInvokeEvent,
     group: string
   ): Promise<void> => {
@@ -867,10 +867,10 @@ export function initIpcHandlers(): void {
       }
       overlayGroups.delete(group);
     }
-    console.log(`[Alt1Compat] overlayClearGroup: ${group}`);
+    console.log(`[RS3BuddyCompat] overlayClearGroup: ${group}`);
   });
 
-  ipcMain.handle('alt1:showNotification', async (
+  ipcMain.handle('rs3buddy:showNotification', async (
     _event: IpcMainInvokeEvent,
     data: { title: string; msg: string; icon: string }
   ): Promise<void> => {
@@ -882,31 +882,31 @@ export function initIpcHandlers(): void {
     }).show();
   });
 
-  ipcMain.handle('alt1:setTooltip', async (
+  ipcMain.handle('rs3buddy:setTooltip', async (
     _event: IpcMainInvokeEvent,
     text: string
   ): Promise<void> => {
-    console.log(`[Alt1Compat] setTooltip: ${text}`);
+    console.log(`[RS3BuddyCompat] setTooltip: ${text}`);
   });
 
-  ipcMain.handle('alt1:clearTooltip', async (): Promise<void> => {
-    console.log('[Alt1Compat] clearTooltip');
+  ipcMain.handle('rs3buddy:clearTooltip', async (): Promise<void> => {
+    console.log('[RS3BuddyCompat] clearTooltip');
   });
 
-  ipcMain.handle('alt1:setTitleBarText', async (
+  ipcMain.handle('rs3buddy:setTitleBarText', async (
     _event: IpcMainInvokeEvent,
     text: string
   ): Promise<void> => {
-    console.log(`[Alt1Compat] setTitleBarText: ${text}`);
+    console.log(`[RS3BuddyCompat] setTitleBarText: ${text}`);
   });
 
-  ipcMain.handle('alt1:setTaskbarProgress', async (
+  ipcMain.handle('rs3buddy:setTaskbarProgress', async (
     _event: IpcMainInvokeEvent,
     data: { type: number; progress: number }
   ): Promise<void> => {
     const mainWindow = getMainWindow();
     if (mainWindow) {
-      // Map Alt1 progress types to Electron
+      // Map RS3Buddy progress types to Electron
       // 0=reset, 1=progress, 2=error, 3=unknown, 4=paused
       const modeMap: { [key: number]: 'none' | 'normal' | 'error' | 'indeterminate' | 'paused' } = {
         0: 'none',
@@ -919,11 +919,11 @@ export function initIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle('alt1:identifyAppUrl', async (
+  ipcMain.handle('rs3buddy:identifyAppUrl', async (
     _event: IpcMainInvokeEvent,
     url: string
   ): Promise<void> => {
-    console.log(`[Alt1Compat] identifyAppUrl: ${url}`);
+    console.log(`[RS3BuddyCompat] identifyAppUrl: ${url}`);
   });
 
   // ============================================

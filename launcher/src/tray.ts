@@ -492,7 +492,7 @@ export function registerClient(
     pid,
     windowTitle,
     connectedAt: Date.now(),
-    ipcChannel: `alt1gl-${pid}`,
+    ipcChannel: `rs3buddy-${pid}`,
     characterId,
     characterName,
   };

@@ -154,58 +154,58 @@ export interface CachedRsState {
 
 export const IpcChannels = {
   // Root addon methods (renderer -> main, ipcRenderer.invoke)
-  ROOT_CAPTURE: 'alt1gl:root:capture',
-  ROOT_GET_RENDERER: 'alt1gl:root:getRenderer',
-  ROOT_GET_OPENGL_STATE: 'alt1gl:root:getOpenGlState',
-  ROOT_GET_GL_LOG_TOGGLES: 'alt1gl:root:getGlLogToggles',
-  ROOT_SET_GL_LOG_TOGGLES: 'alt1gl:root:setGlLogToggles',
+  ROOT_CAPTURE: 'rs3buddy:root:capture',
+  ROOT_GET_RENDERER: 'rs3buddy:root:getRenderer',
+  ROOT_GET_OPENGL_STATE: 'rs3buddy:root:getOpenGlState',
+  ROOT_GET_GL_LOG_TOGGLES: 'rs3buddy:root:getGlLogToggles',
+  ROOT_SET_GL_LOG_TOGGLES: 'rs3buddy:root:setGlLogToggles',
 
   // GL recording (renderer -> main, invoke)
-  GL_RECORD_RENDER_CALLS: 'alt1gl:gl:recordRenderCalls',
+  GL_RECORD_RENDER_CALLS: 'rs3buddy:gl:recordRenderCalls',
 
   // Streaming (renderer -> main, invoke + send)
-  STREAM_START: 'alt1gl:stream:start',
-  STREAM_CLOSE: 'alt1gl:stream:close',
+  STREAM_START: 'rs3buddy:stream:start',
+  STREAM_CLOSE: 'rs3buddy:stream:close',
 
   // Overlay creation (renderer -> main, invoke)
-  OVERLAY_CREATE_PROGRAM: 'alt1gl:overlay:createProgram',
-  OVERLAY_CREATE_VERTEX_ARRAY: 'alt1gl:overlay:createVertexArray',
-  OVERLAY_CREATE_TEXTURE: 'alt1gl:overlay:createTexture',
-  OVERLAY_BEGIN_OVERLAY: 'alt1gl:overlay:beginOverlay',
+  OVERLAY_CREATE_PROGRAM: 'rs3buddy:overlay:createProgram',
+  OVERLAY_CREATE_VERTEX_ARRAY: 'rs3buddy:overlay:createVertexArray',
+  OVERLAY_CREATE_TEXTURE: 'rs3buddy:overlay:createTexture',
+  OVERLAY_BEGIN_OVERLAY: 'rs3buddy:overlay:beginOverlay',
 
   // Handle operations (renderer -> main, invoke)
-  HANDLE_INVOKE: 'alt1gl:handle:invoke',
-  HANDLE_DISPOSE: 'alt1gl:handle:dispose',
+  HANDLE_INVOKE: 'rs3buddy:handle:invoke',
+  HANDLE_DISPOSE: 'rs3buddy:handle:dispose',
 
   // Debug methods (renderer -> main, invoke)
-  DEBUG_GET_CWD: 'alt1gl:debug:getCwd',
-  DEBUG_READ_DIR: 'alt1gl:debug:readDir',
-  DEBUG_READ_FILE: 'alt1gl:debug:readFile',
-  DEBUG_COPY_FILE: 'alt1gl:debug:copyFile',
-  DEBUG_STAT: 'alt1gl:debug:stat',
-  DEBUG_GET_EXE_PIDS: 'alt1gl:debug:getExePids',
-  DEBUG_INJECT_DLL: 'alt1gl:debug:injectDll',
-  DEBUG_CONNECT_OVERLAY: 'alt1gl:debug:connectOverlay',
-  DEBUG_EXIT_DLL: 'alt1gl:debug:exitDll',
-  DEBUG_GET_RS_HWND: 'alt1gl:debug:getRsHwnd',
-  DEBUG_MEMORY_STATE: 'alt1gl:debug:memoryState',
-  DEBUG_GET_ALL_GL_OBJECTS: 'alt1gl:debug:getAllGlObjects',
-  DEBUG_GET_GL_OBJECT_STATS: 'alt1gl:debug:getGlObjectStats',
-  DEBUG_RESET_OPENGL_STATE: 'alt1gl:debug:resetOpenGlState',
-  DEBUG_KILL_MEMORY_SESSION: 'alt1gl:debug:killMemorySession',
-  DEBUG_SET_LOG_CB: 'alt1gl:debug:setLogCb',
+  DEBUG_GET_CWD: 'rs3buddy:debug:getCwd',
+  DEBUG_READ_DIR: 'rs3buddy:debug:readDir',
+  DEBUG_READ_FILE: 'rs3buddy:debug:readFile',
+  DEBUG_COPY_FILE: 'rs3buddy:debug:copyFile',
+  DEBUG_STAT: 'rs3buddy:debug:stat',
+  DEBUG_GET_EXE_PIDS: 'rs3buddy:debug:getExePids',
+  DEBUG_INJECT_DLL: 'rs3buddy:debug:injectDll',
+  DEBUG_CONNECT_OVERLAY: 'rs3buddy:debug:connectOverlay',
+  DEBUG_EXIT_DLL: 'rs3buddy:debug:exitDll',
+  DEBUG_GET_RS_HWND: 'rs3buddy:debug:getRsHwnd',
+  DEBUG_MEMORY_STATE: 'rs3buddy:debug:memoryState',
+  DEBUG_GET_ALL_GL_OBJECTS: 'rs3buddy:debug:getAllGlObjects',
+  DEBUG_GET_GL_OBJECT_STATS: 'rs3buddy:debug:getGlObjectStats',
+  DEBUG_RESET_OPENGL_STATE: 'rs3buddy:debug:resetOpenGlState',
+  DEBUG_KILL_MEMORY_SESSION: 'rs3buddy:debug:killMemorySession',
+  DEBUG_SET_LOG_CB: 'rs3buddy:debug:setLogCb',
 
   // Callbacks (main -> renderer, webContents.send)
-  CALLBACK_STREAM_DATA: 'alt1gl:callback:streamData',
-  CALLBACK_STREAM_ENDED: 'alt1gl:callback:streamEnded',
-  CALLBACK_GL_LOG: 'alt1gl:callback:glLog',
-  CALLBACK_DEBUG_LOG: 'alt1gl:callback:debugLog',
+  CALLBACK_STREAM_DATA: 'rs3buddy:callback:streamData',
+  CALLBACK_STREAM_ENDED: 'rs3buddy:callback:streamEnded',
+  CALLBACK_GL_LOG: 'rs3buddy:callback:glLog',
+  CALLBACK_DEBUG_LOG: 'rs3buddy:callback:debugLog',
 
   // State push (main -> renderer, webContents.send at 10Hz)
-  STATE_UPDATE: 'alt1gl:state:update',
+  STATE_UPDATE: 'rs3buddy:state:update',
 
   // Mouse position (renderer -> main, invoke)
-  MOUSE_GET_POSITION: 'alt1gl:mouse:getPosition',
+  MOUSE_GET_POSITION: 'rs3buddy:mouse:getPosition',
 } as const;
 
 export type IpcChannel = typeof IpcChannels[keyof typeof IpcChannels];

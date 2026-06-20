@@ -120,7 +120,7 @@ interface LauncherRendererAPI {
   // Path setters
   setJagexLauncherPath(path: string): Promise<Result>;
   setRs2ClientPath(path: string): Promise<Result>;
-  setAlt1glLibPath(path: string): Promise<Result>;
+  setRs3buddyLibPath(path: string): Promise<Result>;
 
   // Startup settings
   getLaunchOnStartup(): Promise<boolean>;
@@ -292,8 +292,8 @@ const api: LauncherRendererAPI = {
     ipcRenderer.invoke('set-jagex-launcher-path', path),
   setRs2ClientPath: (path: string) =>
     ipcRenderer.invoke('set-rs2client-path', path),
-  setAlt1glLibPath: (path: string) =>
-    ipcRenderer.invoke('set-alt1gl-lib-path', path),
+  setRs3buddyLibPath: (path: string) =>
+    ipcRenderer.invoke('set-rs3buddy-lib-path', path),
 
   // Startup settings
   getLaunchOnStartup: () => ipcRenderer.invoke('get-launch-on-startup'),

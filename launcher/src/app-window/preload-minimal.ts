@@ -17,7 +17,7 @@ const appWindowApi = {
 // Inject a simple titlebar
 function injectTitlebar(): void {
   const titlebar = document.createElement('div');
-  titlebar.id = 'alt1gl-titlebar';
+  titlebar.id = 'rs3buddy-titlebar';
   titlebar.style.cssText = `
     position: fixed;
     top: 0;

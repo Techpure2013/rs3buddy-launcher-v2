@@ -126,7 +126,7 @@ function isDllLoadedInProcess(pid: number): boolean {
     const hasOverlay = /\boverlay(-\d+)?\.dll\b/i.test(output);
     const hasInjected = /\binjected(-\d+)?\.dll\b/i.test(output);
     if (hasOverlay || hasInjected) {
-      console.log('[Game] Alt1GL DLL already loaded in PID:', pid,
+      console.log('[Game] RS3Buddy DLL already loaded in PID:', pid,
         hasOverlay ? '(overlay)' : '', hasInjected ? '(injected)' : '');
       return true;
     }
@@ -144,7 +144,7 @@ export function doesOverlayPipeExist(pid: number): boolean {
 
   // Windows implementation - use fs.existsSync on the pipe path (faster than PowerShell)
   try {
-    const pipePath = `//./pipe/alt1gl-overlay-${pid}`;
+    const pipePath = `//./pipe/rs3buddy-overlay-${pid}`;
     return fs.existsSync(pipePath);
   } catch {
     return false;
@@ -183,7 +183,7 @@ function checkForCrashReport(pid: number): void {
   try {
     const desktopPath = app.getPath('desktop');
     const files = fs.readdirSync(desktopPath)
-      .filter(f => (f.startsWith('RS3-Launcher-Buddy-Crash-Report-') || f.startsWith('alt1gl-crash-')) && f.endsWith('.txt'))
+      .filter(f => (f.startsWith('RS3-Launcher-Buddy-Crash-Report-') || f.startsWith('rs3buddy-crash-')) && f.endsWith('.txt'))
       .map(f => ({
         name: f,
         path: path.join(desktopPath, f),
@@ -537,11 +537,11 @@ export async function launchRuneScape(options: LaunchOptions = {}): Promise<Resu
   const env: GameEnv = { ...process.env };
 
   // Set up library injection/preload (disabled for now to test)
-  // if (config.alt1glLibPath) {
+  // if (config.rs3buddyLibPath) {
   //   if (isWindows) {
-  //     env.ALT1GL_DLL_PATH = config.alt1glLibPath;
+  //     env.RS3BUDDY_DLL_PATH = config.rs3buddyLibPath;
   //   } else {
-  //     env.LD_PRELOAD = config.alt1glLibPath;
+  //     env.LD_PRELOAD = config.rs3buddyLibPath;
   //   }
   // }
 
@@ -705,9 +705,9 @@ export function launchViaJagexLauncher(): Result {
       env.LD_PRELOAD = existingPreload ? `${existingPreload}:${overlayPath}` : overlayPath;
       console.log('[Linux] LD_PRELOAD set to:', env.LD_PRELOAD);
     }
-  } else if (config.alt1glLibPath) {
+  } else if (config.rs3buddyLibPath) {
     // Windows: Set DLL path (used by injection)
-    env.ALT1GL_DLL_PATH = config.alt1glLibPath;
+    env.RS3BUDDY_DLL_PATH = config.rs3buddyLibPath;
   }
 
   const spawnOptions = {

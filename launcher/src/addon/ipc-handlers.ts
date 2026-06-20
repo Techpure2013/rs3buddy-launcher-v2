@@ -1,5 +1,5 @@
 /**
- * IPC Handlers - Registers all alt1gl:* ipcMain.handle() channels.
+ * IPC Handlers - Registers all rs3buddy:* ipcMain.handle() channels.
  *
  * These handlers bridge isolated renderer windows to the native addon
  * in the main process. Each handler validates the sender, delegates to
@@ -61,7 +61,7 @@ function ownerId(event: IpcMainInvokeEvent): number {
 }
 
 /**
- * Register all alt1gl:* IPC handlers.
+ * Register all rs3buddy:* IPC handlers.
  * Call once after app is ready and addon is initialized.
  */
 export function registerAddonIpcHandlers(): void {
@@ -189,9 +189,9 @@ export function registerAddonIpcHandlers(): void {
     return results;
   }
 
-  // Diagnostic logging toggle — set via alt1gl:debug:setRecordLog IPC
+  // Diagnostic logging toggle — set via rs3buddy:debug:setRecordLog IPC
   // Disabled by default; per-call logs drown out health checks.
-  // Enable via: alt1gl.debug.setRecordLog(true) in renderer console
+  // Enable via: rs3buddy.debug.setRecordLog(true) in renderer console
   let recordCallLog = false;
 
   // Recording throttle — the DLL needs 2-5s to GC after a full recording
@@ -408,7 +408,7 @@ export function registerAddonIpcHandlers(): void {
   // Diagnostic: end-to-end recordRenderCalls test
   // ==========================================
 
-  ipcMain.handle('alt1gl:debug:testRecordRenderCalls', async () => {
+  ipcMain.handle('rs3buddy:debug:testRecordRenderCalls', async () => {
     const report: string[] = [];
     const addon = requireAddon();
     report.push(`[DiagnosticTest] Starting end-to-end recordRenderCalls test`);
@@ -601,7 +601,7 @@ export function registerAddonIpcHandlers(): void {
   // (zero breaking changes for developers). These are called once at setup,
   // not in render loops, so blocking briefly is acceptable.
 
-  ipcMain.on('alt1gl:overlay:createProgramSync', (event, vertexShader: string, fragmentShader: string, inputs: GlAttributeArgument[], uniforms: GlUniformArgument[]) => {
+  ipcMain.on('rs3buddy:overlay:createProgramSync', (event, vertexShader: string, fragmentShader: string, inputs: GlAttributeArgument[], uniforms: GlUniformArgument[]) => {
     try {
       const addon = requireAddon();
       const prog = addon.createProgram(vertexShader, fragmentShader, inputs, uniforms);
@@ -612,7 +612,7 @@ export function registerAddonIpcHandlers(): void {
     }
   });
 
-  ipcMain.on('alt1gl:overlay:createVertexArraySync', (event, indexBuffer: Uint8Array, inputs: RenderInput[]) => {
+  ipcMain.on('rs3buddy:overlay:createVertexArraySync', (event, indexBuffer: Uint8Array, inputs: RenderInput[]) => {
     try {
       const addon = requireAddon();
       const vas = addon.createVertexArray(indexBuffer, inputs);
@@ -623,7 +623,7 @@ export function registerAddonIpcHandlers(): void {
     }
   });
 
-  ipcMain.on('alt1gl:overlay:createTextureSync', (event, imgData: { width: number; height: number; data: Uint8ClampedArray }) => {
+  ipcMain.on('rs3buddy:overlay:createTextureSync', (event, imgData: { width: number; height: number; data: Uint8ClampedArray }) => {
     try {
       const addon = requireAddon();
       if (!imgData || typeof imgData.width !== 'number' || typeof imgData.height !== 'number' || !imgData.data) {
@@ -647,7 +647,7 @@ export function registerAddonIpcHandlers(): void {
     }
   });
 
-  ipcMain.on('alt1gl:overlay:beginOverlaySync', (event, trigger: RenderFilter, progHandleId: string | undefined, vasHandleId: string | undefined, options: GlOverlayOption & { samplerHandleIds?: { [loc: number]: string } }) => {
+  ipcMain.on('rs3buddy:overlay:beginOverlaySync', (event, trigger: RenderFilter, progHandleId: string | undefined, vasHandleId: string | undefined, options: GlOverlayOption & { samplerHandleIds?: { [loc: number]: string } }) => {
     try {
       const addon = requireAddon();
       const store = getStore();
@@ -740,7 +740,7 @@ export function registerAddonIpcHandlers(): void {
   // that are called in tight synchronous loops (reflect2d sprite detection).
   // These native methods are already synchronous; sendSync preserves that.
 
-  ipcMain.on('alt1gl:handle:invokeSync', (event, request: HandleInvokeRequest) => {
+  ipcMain.on('rs3buddy:handle:invokeSync', (event, request: HandleInvokeRequest) => {
     try {
       const store = getStore();
       const owner = event.sender.id;
@@ -791,7 +791,7 @@ export function registerAddonIpcHandlers(): void {
   // Single IPC round-trip for N handle method calls. Critical for sprite
   // detection loops that call capture() 50-200 times per cycle.
 
-  ipcMain.on('alt1gl:handle:batchInvokeSync', (event, requests: HandleInvokeRequest[]) => {
+  ipcMain.on('rs3buddy:handle:batchInvokeSync', (event, requests: HandleInvokeRequest[]) => {
     const store = getStore();
     const owner = event.sender.id;
     const results: any[] = new Array(requests.length);
@@ -911,11 +911,11 @@ export function registerAddonIpcHandlers(): void {
     return JSON.parse(JSON.stringify(mem));
   });
 
-  ipcMain.handle('alt1gl:debug:handleStoreStats', () => {
+  ipcMain.handle('rs3buddy:debug:handleStoreStats', () => {
     return getStore().stats();
   });
 
-  ipcMain.handle('alt1gl:debug:disposeAllHandles', () => {
+  ipcMain.handle('rs3buddy:debug:disposeAllHandles', () => {
     return getStore().disposeAll();
   });
 
@@ -933,7 +933,7 @@ export function registerAddonIpcHandlers(): void {
     return JSON.parse(JSON.stringify(stats));
   });
 
-  ipcMain.handle('alt1gl:debug:getSharedMemorySizes', () => {
+  ipcMain.handle('rs3buddy:debug:getSharedMemorySizes', () => {
     const sizes = requireAddon().debug.getSharedMemorySizes();
     return Array.from(sizes || []);
   });
@@ -960,11 +960,11 @@ export function registerAddonIpcHandlers(): void {
   // ==========================================
 
   // Subscribing to GL log is done via the set-gl-log-toggles + a subscribe channel
-  ipcMain.handle('alt1gl:callback:subscribeGlLog', (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('rs3buddy:callback:subscribeGlLog', (event: IpcMainInvokeEvent) => {
     callbackRegistry.subscribeGlLog(event.sender, requireAddon());
   });
 
-  ipcMain.handle('alt1gl:callback:unsubscribeGlLog', (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('rs3buddy:callback:unsubscribeGlLog', (event: IpcMainInvokeEvent) => {
     callbackRegistry.unsubscribeGlLog(ownerId(event), requireAddon());
   });
 
@@ -987,13 +987,13 @@ export function registerAddonIpcHandlers(): void {
 
   // Windows subscribe to receive 10Hz cached RS state updates.
   // The preload caches these locally for synchronous getRsReady/X/Y/Width/Height.
-  ipcMain.handle('alt1gl:state:subscribe', (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('rs3buddy:state:subscribe', (event: IpcMainInvokeEvent) => {
     stateSubscribers.set(event.sender.id, event.sender);
     // Send current state immediately so the window doesn't start with stale zeros
     return addonManager.getCachedState();
   });
 
-  ipcMain.handle('alt1gl:state:unsubscribe', (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('rs3buddy:state:unsubscribe', (event: IpcMainInvokeEvent) => {
     stateSubscribers.delete(event.sender.id);
   });
 
@@ -1008,7 +1008,7 @@ export function registerAddonIpcHandlers(): void {
     }
   });
 
-  console.log('[IpcHandlers] All alt1gl:* handlers registered');
+  console.log('[IpcHandlers] All rs3buddy:* handlers registered');
 }
 
 /**

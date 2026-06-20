@@ -1,7 +1,7 @@
 /**
  * Isolated Preload Script - contextBridge based
  *
- * Exposes the Alt1GL API to renderer windows via IPC proxy.
+ * Exposes the RS3Buddy API to renderer windows via IPC proxy.
  * Runs with contextIsolation: true and sandbox: true.
  * The native addon lives in the main process; this preload communicates
  * with it via ipcRenderer.invoke() and exposes a compatible API shape
@@ -20,13 +20,13 @@ import { contextBridge, ipcRenderer, webFrame } from 'electron';
 let cachedState = { ready: 0, x: 0, y: 0, width: 0, height: 0, hwnd: 0 };
 
 // Subscribe immediately - get current state and start receiving updates
-ipcRenderer.invoke('alt1gl:state:subscribe').then(state => {
+ipcRenderer.invoke('rs3buddy:state:subscribe').then(state => {
   if (state) cachedState = state;
 }).catch(() => {
   // Addon may not be initialized yet
 });
 
-ipcRenderer.on('alt1gl:state:update', (_e, state) => {
+ipcRenderer.on('rs3buddy:state:update', (_e, state) => {
   cachedState = state;
 });
 
@@ -34,8 +34,8 @@ ipcRenderer.on('alt1gl:state:update', (_e, state) => {
 // 2. Handle Invocation Helpers
 // ============================================
 
-const INVOKE = 'alt1gl:handle:invoke';
-const DISPOSE = 'alt1gl:handle:dispose';
+const INVOKE = 'rs3buddy:handle:invoke';
+const DISPOSE = 'rs3buddy:handle:dispose';
 
 function invokeHandle(handleId: string, method: string, args: unknown[] = []): Promise<unknown> {
   return ipcRenderer.invoke(INVOKE, { handleId, method, args });
@@ -47,7 +47,7 @@ function invokeHandle(handleId: string, method: string, args: unknown[] = []): P
  * called in tight synchronous loops (reflect2d sprite detection).
  */
 function invokeHandleSync(handleId: string, method: string, args: unknown[] = []): unknown {
-  const result = ipcRenderer.sendSync('alt1gl:handle:invokeSync', { handleId, method, args });
+  const result = ipcRenderer.sendSync('rs3buddy:handle:invokeSync', { handleId, method, args });
   if (result && result.error) throw new Error(result.error);
   return result?.data;
 }
@@ -66,7 +66,7 @@ function toImageData(r: any): ImageData | null {
 // the methods to the renderer world (Electron 28+).
 
 function batchInvokeSync(requests: Array<{handleId: string, method: string, args: any[]}>): any[] {
-  return ipcRenderer.sendSync('alt1gl:handle:batchInvokeSync', requests);
+  return ipcRenderer.sendSync('rs3buddy:handle:batchInvokeSync', requests);
 }
 
 function hydrateTrackedTexture(s: any) {
@@ -236,7 +236,7 @@ const streamCallbacks = new Map<string, (renders: any[]) => void>();
 const streamEndedCallbacks = new Map<string, () => void>();
 const pendingStreamData = new Map<string, any[][]>();
 
-ipcRenderer.on('alt1gl:callback:streamData', (_e, data: { streamId: string; renders: any[] }) => {
+ipcRenderer.on('rs3buddy:callback:streamData', (_e, data: { streamId: string; renders: any[] }) => {
   const cb = streamCallbacks.get(data.streamId);
   if (cb) {
     cb(data.renders);
@@ -252,7 +252,7 @@ ipcRenderer.on('alt1gl:callback:streamData', (_e, data: { streamId: string; rend
   }
 });
 
-ipcRenderer.on('alt1gl:callback:streamEnded', (_e, data: { streamId: string }) => {
+ipcRenderer.on('rs3buddy:callback:streamEnded', (_e, data: { streamId: string }) => {
   streamCallbacks.delete(data.streamId);
   pendingStreamData.delete(data.streamId);
   const endCb = streamEndedCallbacks.get(data.streamId);
@@ -268,21 +268,21 @@ ipcRenderer.on('alt1gl:callback:streamEnded', (_e, data: { streamId: string }) =
 
 let glLogCallback: ((packet: any) => void) | null = null;
 
-ipcRenderer.on('alt1gl:callback:glLog', (_e, packet: any) => {
+ipcRenderer.on('rs3buddy:callback:glLog', (_e, packet: any) => {
   if (glLogCallback) glLogCallback(packet);
 });
 
 let debugLogCallback: ((message: string) => void) | null = null;
 
-ipcRenderer.on('alt1gl:callback:debugLog', (_e, data: { message: string }) => {
+ipcRenderer.on('rs3buddy:callback:debugLog', (_e, data: { message: string }) => {
   if (debugLogCallback) debugLogCallback(data.message);
 });
 
 // ============================================
-// 6. Alt1GL Proxy API
+// 6. RS3Buddy Proxy API
 // ============================================
 
-const alt1glProxy = {
+const rs3buddyProxy = {
   // --- Cached sync values ---
   getRsReady: () => cachedState.ready,
   getRsX: () => cachedState.x,
@@ -293,21 +293,21 @@ const alt1glProxy = {
 
   // --- Async root methods ---
   capture: async (texid: number, x: number, y: number, w: number, h: number) => {
-    const r = await ipcRenderer.invoke('alt1gl:root:capture', texid, x, y, w, h);
+    const r = await ipcRenderer.invoke('rs3buddy:root:capture', texid, x, y, w, h);
     // Return raw {width, height, data} - NOT ImageData. contextBridge cannot
     // serialize ImageData across worlds. The renderer-world shim reconstructs it.
     if (!r || !r.width || !r.height) return null;
     return { width: r.width, height: r.height, data: r.data };
   },
 
-  getRenderer: () => ipcRenderer.invoke('alt1gl:root:getRenderer'),
+  getRenderer: () => ipcRenderer.invoke('rs3buddy:root:getRenderer'),
 
   getOpenGlState: async () => {
-    return await ipcRenderer.invoke('alt1gl:root:getOpenGlState');
+    return await ipcRenderer.invoke('rs3buddy:root:getOpenGlState');
   },
 
   recordRenderCalls: async (options?: any) => {
-    return (await ipcRenderer.invoke('alt1gl:gl:recordRenderCalls', options)) || [];
+    return (await ipcRenderer.invoke('rs3buddy:gl:recordRenderCalls', options)) || [];
   },
 
   streamRenderCalls: (options: any, callback: (renders: any[]) => void) => {
@@ -318,7 +318,7 @@ const alt1glProxy = {
     const endedPromise = new Promise<void>(resolve => { resolveEnded = resolve; });
 
     // Register callback BEFORE starting the stream to avoid race condition
-    const startPromise = ipcRenderer.invoke('alt1gl:stream:start', options).then(result => {
+    const startPromise = ipcRenderer.invoke('rs3buddy:stream:start', options).then(result => {
       streamId = result.streamId;
       streamCallbacks.set(streamId!, callback);
       // Register ended callback so we know when the stream dies on the main side
@@ -336,7 +336,7 @@ const alt1glProxy = {
       }
       return result;
     }).catch(err => {
-      console.error('[alt1gl] Stream start failed:', err);
+      console.error('[rs3buddy] Stream start failed:', err);
       ended = true;
       resolveEnded!();
       throw err;
@@ -350,7 +350,7 @@ const alt1glProxy = {
           streamCallbacks.delete(streamId);
           streamEndedCallbacks.delete(streamId);
           pendingStreamData.delete(streamId);
-          await ipcRenderer.invoke('alt1gl:stream:close', streamId);
+          await ipcRenderer.invoke('rs3buddy:stream:close', streamId);
           ended = true;
           resolveEnded!();
         }
@@ -363,30 +363,30 @@ const alt1glProxy = {
   setGlLogCb: (cb: ((packet: any) => void) | null) => {
     glLogCallback = cb;
     if (cb) {
-      ipcRenderer.invoke('alt1gl:callback:subscribeGlLog');
+      ipcRenderer.invoke('rs3buddy:callback:subscribeGlLog');
     } else {
-      ipcRenderer.invoke('alt1gl:callback:unsubscribeGlLog');
+      ipcRenderer.invoke('rs3buddy:callback:unsubscribeGlLog');
     }
   },
 
-  getGlLogToggles: () => ipcRenderer.invoke('alt1gl:root:getGlLogToggles'),
-  setGlLogToggles: (arr: Uint8Array) => ipcRenderer.invoke('alt1gl:root:setGlLogToggles', arr),
+  getGlLogToggles: () => ipcRenderer.invoke('rs3buddy:root:getGlLogToggles'),
+  setGlLogToggles: (arr: Uint8Array) => ipcRenderer.invoke('rs3buddy:root:setGlLogToggles', arr),
 
   // --- Overlay / Creation (synchronous via sendSync) ---
   createProgram: (vertexShader: string, fragmentShader: string, inputs: any[], uniforms: any[]) => {
-    const result = ipcRenderer.sendSync('alt1gl:overlay:createProgramSync', vertexShader, fragmentShader, inputs, uniforms);
+    const result = ipcRenderer.sendSync('rs3buddy:overlay:createProgramSync', vertexShader, fragmentShader, inputs, uniforms);
     if (result && result.error) throw new Error(result.error);
     return hydrateGlProgram(result?.data);
   },
 
   createVertexArray: (indexBuffer: Uint8Array, inputs: any[]) => {
-    const result = ipcRenderer.sendSync('alt1gl:overlay:createVertexArraySync', indexBuffer, inputs);
+    const result = ipcRenderer.sendSync('rs3buddy:overlay:createVertexArraySync', indexBuffer, inputs);
     if (result && result.error) throw new Error(result.error);
     return hydrateVertexArraySnapshot(result?.data);
   },
 
   createTexture: (img: ImageData) => {
-    const result = ipcRenderer.sendSync('alt1gl:overlay:createTextureSync', {
+    const result = ipcRenderer.sendSync('rs3buddy:overlay:createTextureSync', {
       width: img.width, height: img.height, data: img.data,
     });
     if (result && result.error) throw new Error(result.error);
@@ -408,16 +408,16 @@ const alt1glProxy = {
       delete optsCopy.samplers;
     }
 
-    const result = ipcRenderer.sendSync('alt1gl:overlay:beginOverlaySync', trigger, progHandleId, vasHandleId, optsCopy);
+    const result = ipcRenderer.sendSync('rs3buddy:overlay:beginOverlaySync', trigger, progHandleId, vasHandleId, optsCopy);
     if (result && result.error) throw new Error(result.error);
     return hydrateGlOverlay(result?.data);
   },
 
   // --- Mouse Position ---
-  getMousePosition: () => ipcRenderer.invoke('alt1gl:mouse:getPosition'),
+  getMousePosition: () => ipcRenderer.invoke('rs3buddy:mouse:getPosition'),
   // Compatibility shim: some apps access overlay.getMousePosition
   overlay: {
-    getMousePosition: () => ipcRenderer.invoke('alt1gl:mouse:getPosition'),
+    getMousePosition: () => ipcRenderer.invoke('rs3buddy:mouse:getPosition'),
   },
 
   // --- Handle Bridge (for renderer-world shim) ---
@@ -425,7 +425,7 @@ const alt1glProxy = {
     return invokeHandleSync(handleId, method, args || []);
   },
   __batchInvokeSync: (requests: Array<{handleId: string, method: string, args: any[]}>) => {
-    const results = ipcRenderer.sendSync('alt1gl:handle:batchInvokeSync', requests);
+    const results = ipcRenderer.sendSync('rs3buddy:handle:batchInvokeSync', requests);
     return results;
   },
   __disposeHandle: (handleId: string) => {
@@ -434,29 +434,29 @@ const alt1glProxy = {
 
   // --- Debug API ---
   debug: {
-    getCurrentWorkingDirectory: () => ipcRenderer.invoke('alt1gl:debug:getCwd'),
-    readDirSync: (dir: string) => ipcRenderer.invoke('alt1gl:debug:readDir', dir),
-    readFileSync: (file: string) => ipcRenderer.invoke('alt1gl:debug:readFile', file),
-    copyFileSync: (from: string, to: string) => ipcRenderer.invoke('alt1gl:debug:copyFile', from, to),
-    statSync: (file: string) => ipcRenderer.invoke('alt1gl:debug:stat', file),
-    getExePids: (name: string, parent?: number) => ipcRenderer.invoke('alt1gl:debug:getExePids', name, parent),
+    getCurrentWorkingDirectory: () => ipcRenderer.invoke('rs3buddy:debug:getCwd'),
+    readDirSync: (dir: string) => ipcRenderer.invoke('rs3buddy:debug:readDir', dir),
+    readFileSync: (file: string) => ipcRenderer.invoke('rs3buddy:debug:readFile', file),
+    copyFileSync: (from: string, to: string) => ipcRenderer.invoke('rs3buddy:debug:copyFile', from, to),
+    statSync: (file: string) => ipcRenderer.invoke('rs3buddy:debug:stat', file),
+    getExePids: (name: string, parent?: number) => ipcRenderer.invoke('rs3buddy:debug:getExePids', name, parent),
     injectDll: (pid: number, dllfile: string, memoryid?: number, instanceid?: number) =>
-      ipcRenderer.invoke('alt1gl:debug:injectDll', pid, dllfile, memoryid, instanceid),
-    connectToOverlay: (pid: number) => ipcRenderer.invoke('alt1gl:debug:connectOverlay', pid),
-    exitDll: () => ipcRenderer.invoke('alt1gl:debug:exitDll'),
-    getRsHwnd: () => ipcRenderer.invoke('alt1gl:debug:getRsHwnd'),
-    memoryState: () => ipcRenderer.invoke('alt1gl:debug:memoryState'),
-    handleStoreStats: () => ipcRenderer.invoke('alt1gl:debug:handleStoreStats'),
-    disposeAllHandles: () => ipcRenderer.invoke('alt1gl:debug:disposeAllHandles'),
-    getSharedMemorySizes: () => ipcRenderer.invoke('alt1gl:debug:getSharedMemorySizes'),
-    getAllGlObjects: () => ipcRenderer.invoke('alt1gl:debug:getAllGlObjects'),
-    getGlObjectStats: () => ipcRenderer.invoke('alt1gl:debug:getGlObjectStats'),
-    resetOpenGlState: () => ipcRenderer.invoke('alt1gl:debug:resetOpenGlState'),
-    killMemorySession: () => ipcRenderer.invoke('alt1gl:debug:killMemorySession'),
-    testRecordRenderCalls: () => ipcRenderer.invoke('alt1gl:debug:testRecordRenderCalls'),
+      ipcRenderer.invoke('rs3buddy:debug:injectDll', pid, dllfile, memoryid, instanceid),
+    connectToOverlay: (pid: number) => ipcRenderer.invoke('rs3buddy:debug:connectOverlay', pid),
+    exitDll: () => ipcRenderer.invoke('rs3buddy:debug:exitDll'),
+    getRsHwnd: () => ipcRenderer.invoke('rs3buddy:debug:getRsHwnd'),
+    memoryState: () => ipcRenderer.invoke('rs3buddy:debug:memoryState'),
+    handleStoreStats: () => ipcRenderer.invoke('rs3buddy:debug:handleStoreStats'),
+    disposeAllHandles: () => ipcRenderer.invoke('rs3buddy:debug:disposeAllHandles'),
+    getSharedMemorySizes: () => ipcRenderer.invoke('rs3buddy:debug:getSharedMemorySizes'),
+    getAllGlObjects: () => ipcRenderer.invoke('rs3buddy:debug:getAllGlObjects'),
+    getGlObjectStats: () => ipcRenderer.invoke('rs3buddy:debug:getGlObjectStats'),
+    resetOpenGlState: () => ipcRenderer.invoke('rs3buddy:debug:resetOpenGlState'),
+    killMemorySession: () => ipcRenderer.invoke('rs3buddy:debug:killMemorySession'),
+    testRecordRenderCalls: () => ipcRenderer.invoke('rs3buddy:debug:testRecordRenderCalls'),
     setLogCb: (cb: ((message: string) => void) | null) => {
       debugLogCallback = cb;
-      ipcRenderer.invoke('alt1gl:debug:setLogCb', !!cb);
+      ipcRenderer.invoke('rs3buddy:debug:setLogCb', !!cb);
     },
   },
 };
@@ -600,30 +600,30 @@ const hotkeyApi = {
 // 9. Expose via contextBridge
 // ============================================
 
-// Expose internal bridge as _alt1gl (frozen proxy). The renderer-world shim
-// below creates the mutable window.alt1gl that apps actually use.
-// We can't expose directly as 'alt1gl' because contextBridge freezes the
+// Expose internal bridge as _rs3buddy (frozen proxy). The renderer-world shim
+// below creates the mutable window.rs3buddy that apps actually use.
+// We can't expose directly as 'rs3buddy' because contextBridge freezes the
 // object, making it impossible to wrap async methods that return objects
 // needing method patching (Promise-resolved values are structured-cloned,
 // stripping all functions from nested objects).
-contextBridge.exposeInMainWorld('_alt1gl', alt1glProxy);
+contextBridge.exposeInMainWorld('_rs3buddy', rs3buddyProxy);
 contextBridge.exposeInMainWorld('appWindowApi', appWindowApi);
-contextBridge.exposeInMainWorld('alt1Hotkeys', hotkeyApi);
+contextBridge.exposeInMainWorld('rs3buddyHotkeys', hotkeyApi);
 
-console.log('[PreloadIsolated] APIs exposed via contextBridge (_alt1gl bridge)');
+console.log('[PreloadIsolated] APIs exposed via contextBridge (_rs3buddy bridge)');
 
 // ============================================
 // 10. Renderer-World Method Shim
 // ============================================
-// contextBridge exposes _alt1gl as a frozen proxy. Promise-resolved values
+// contextBridge exposes _rs3buddy as a frozen proxy. Promise-resolved values
 // are structured-cloned, stripping nested functions. This shim runs in the
-// renderer's main world and creates window.alt1gl as a MUTABLE wrapper that
+// renderer's main world and creates window.rs3buddy as a MUTABLE wrapper that
 // patches async return values with handle-backed methods.
 
 const RENDERER_SHIM = `
 (function() {
-  var _real = window._alt1gl;
-  if (!_real) { console.error('[alt1gl-shim] _alt1gl bridge not found!'); return; }
+  var _real = window._rs3buddy;
+  if (!_real) { console.error('[rs3buddy-shim] _rs3buddy bridge not found!'); return; }
 
   // --- ImageData reconstruction ---
   function toImageData(r) {
@@ -730,8 +730,8 @@ const RENDERER_SHIM = `
     return r;
   }
 
-  // --- Create mutable window.alt1gl wrapping frozen _alt1gl bridge ---
-  var alt1 = {
+  // --- Create mutable window.rs3buddy wrapping frozen _rs3buddy bridge ---
+  var rs3buddyApi = {
     // Sync getters (cached state)
     getRsReady: function() { return _real.getRsReady(); },
     getRsX: function() { return _real.getRsX(); },
@@ -887,8 +887,8 @@ const RENDERER_SHIM = `
     },
   };
 
-  window.alt1gl = alt1;
-  console.log('[alt1gl-shim] Renderer-world API active (mutable wrapper over _alt1gl bridge)');
+  window.rs3buddy = rs3buddyApi;
+  console.log('[rs3buddy-shim] Renderer-world API active (mutable wrapper over _rs3buddy bridge)');
 })();
 `;
 
@@ -913,7 +913,7 @@ let titlebarTitle = 'Loading...';
 let titlebarStyleElement: HTMLStyleElement | null = null;
 
 const TITLEBAR_CSS = `
-  #alt1gl-titlebar {
+  #rs3buddy-titlebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -932,7 +932,7 @@ const TITLEBAR_CSS = `
     will-change: transform;
     contain: layout style;
   }
-  #alt1gl-title {
+  #rs3buddy-title {
     color: rgba(255, 255, 255, 0.9);
     font-size: 12px;
     font-weight: 500;
@@ -942,7 +942,7 @@ const TITLEBAR_CSS = `
     flex: 1;
     -webkit-app-region: drag;
   }
-  #alt1gl-close-btn {
+  #rs3buddy-close-btn {
     width: 24px;
     height: 24px;
     border: none;
@@ -957,18 +957,18 @@ const TITLEBAR_CSS = `
     flex-shrink: 0;
     -webkit-app-region: no-drag;
   }
-  #alt1gl-close-btn:hover {
+  #rs3buddy-close-btn:hover {
     background: #e81123;
     color: #ffffff;
   }
-  #alt1gl-close-btn:active {
+  #rs3buddy-close-btn:active {
     background: #c50f1f;
   }
-  #alt1gl-close-btn svg {
+  #rs3buddy-close-btn svg {
     width: 12px;
     height: 12px;
   }
-  #alt1gl-minimize-btn {
+  #rs3buddy-minimize-btn {
     width: 24px;
     height: 24px;
     border: none;
@@ -984,14 +984,14 @@ const TITLEBAR_CSS = `
     -webkit-app-region: no-drag;
     margin-right: 2px;
   }
-  #alt1gl-minimize-btn:hover {
+  #rs3buddy-minimize-btn:hover {
     background: rgba(255, 255, 255, 0.15);
     color: #ffffff;
   }
-  #alt1gl-minimize-btn:active {
+  #rs3buddy-minimize-btn:active {
     background: rgba(255, 255, 255, 0.25);
   }
-  #alt1gl-minimize-btn svg {
+  #rs3buddy-minimize-btn svg {
     width: 12px;
     height: 12px;
   }
@@ -1011,21 +1011,21 @@ const TITLEBAR_CSS = `
 function ensureTitlebarStyle(): void {
   if (titlebarStyleElement && titlebarStyleElement.parentNode) return;
   titlebarStyleElement = document.createElement('style');
-  titlebarStyleElement.id = 'alt1gl-titlebar-style';
+  titlebarStyleElement.id = 'rs3buddy-titlebar-style';
   titlebarStyleElement.textContent = TITLEBAR_CSS;
   if (document.head) document.head.appendChild(titlebarStyleElement);
 }
 
 function createTitlebarElement(): HTMLDivElement {
   const titlebar = document.createElement('div');
-  titlebar.id = 'alt1gl-titlebar';
+  titlebar.id = 'rs3buddy-titlebar';
 
   const titleText = document.createElement('span');
-  titleText.id = 'alt1gl-title';
+  titleText.id = 'rs3buddy-title';
   titleText.textContent = titlebarTitle;
 
   const minimizeBtn = document.createElement('button');
-  minimizeBtn.id = 'alt1gl-minimize-btn';
+  minimizeBtn.id = 'rs3buddy-minimize-btn';
   minimizeBtn.title = 'Minimize';
   minimizeBtn.innerHTML = `
     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -1035,7 +1035,7 @@ function createTitlebarElement(): HTMLDivElement {
   minimizeBtn.addEventListener('click', () => ipcRenderer.send('app-window:minimize'));
 
   const closeBtn = document.createElement('button');
-  closeBtn.id = 'alt1gl-close-btn';
+  closeBtn.id = 'rs3buddy-close-btn';
   closeBtn.title = 'Close';
   closeBtn.innerHTML = `
     <svg width="12" height="12" viewBox="0 0 12 12">
@@ -1051,7 +1051,7 @@ function createTitlebarElement(): HTMLDivElement {
 }
 
 function injectTitlebar(): void {
-  if (document.getElementById('alt1gl-titlebar')) return;
+  if (document.getElementById('rs3buddy-titlebar')) return;
   if (!document.body) return;
   ensureTitlebarStyle();
   document.body.insertBefore(createTitlebarElement(), document.body.firstChild);
@@ -1059,14 +1059,14 @@ function injectTitlebar(): void {
 
 function watchTitlebar(): void {
   const bodyObserver = new MutationObserver(() => {
-    if (!document.getElementById('alt1gl-titlebar') && document.body) {
+    if (!document.getElementById('rs3buddy-titlebar') && document.body) {
       injectTitlebar();
     }
   });
   if (document.body) bodyObserver.observe(document.body, { childList: true });
 
   const htmlObserver = new MutationObserver(() => {
-    if (document.body && !document.getElementById('alt1gl-titlebar')) {
+    if (document.body && !document.getElementById('rs3buddy-titlebar')) {
       bodyObserver.disconnect();
       injectTitlebar();
       bodyObserver.observe(document.body, { childList: true });
@@ -1075,7 +1075,7 @@ function watchTitlebar(): void {
   htmlObserver.observe(document.documentElement, { childList: true });
 
   setInterval(() => {
-    if (document.body && !document.getElementById('alt1gl-titlebar')) {
+    if (document.body && !document.getElementById('rs3buddy-titlebar')) {
       injectTitlebar();
       bodyObserver.disconnect();
       bodyObserver.observe(document.body, { childList: true });
@@ -1086,7 +1086,7 @@ function watchTitlebar(): void {
 // Fetch title
 ipcRenderer.invoke('app-window:get-title').then((title: string) => {
   titlebarTitle = title;
-  const el = document.getElementById('alt1gl-title');
+  const el = document.getElementById('rs3buddy-title');
   if (el) el.textContent = title;
 });
 
@@ -1099,5 +1099,5 @@ if (document.readyState === 'loading') {
 }
 
 window.addEventListener('load', () => {
-  if (!document.getElementById('alt1gl-titlebar')) injectTitlebar();
+  if (!document.getElementById('rs3buddy-titlebar')) injectTitlebar();
 });

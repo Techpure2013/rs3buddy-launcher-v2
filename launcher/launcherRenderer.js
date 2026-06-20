@@ -17,7 +17,7 @@
   var config = {
     jagexLauncherPath: null,
     rs2ClientPath: null,
-    alt1glLibPath: null,
+    rs3buddyLibPath: null,
     startMinimized: false,
     closeToTray: true
   };
@@ -66,8 +66,8 @@
     closeInstallModal: document.getElementById("closeInstallModal"),
     rs2ClientPath: document.getElementById("rs2ClientPath"),
     rs2ClientStatus: document.getElementById("rs2ClientStatus"),
-    alt1glLibPath: document.getElementById("alt1glLibPath"),
-    alt1glLibStatus: document.getElementById("alt1glLibStatus"),
+    rs3buddyLibPath: document.getElementById("rs3buddyLibPath"),
+    rs3buddyLibStatus: document.getElementById("rs3buddyLibStatus"),
     themeBtns: document.querySelectorAll(".theme-btn"),
     launchOnStartup: document.getElementById("launchOnStartup"),
     startMinimized: document.getElementById("startMinimized"),
@@ -346,14 +346,14 @@
         elements.rs2ClientStatus.className = "setting-status not-found";
       }
     }
-    if (elements.alt1glLibPath && elements.alt1glLibStatus) {
-      if (config.alt1glLibPath) {
-        elements.alt1glLibPath.textContent = truncatePath(config.alt1glLibPath, 35);
-        elements.alt1glLibPath.title = config.alt1glLibPath;
-        elements.alt1glLibStatus.className = "setting-status found";
+    if (elements.rs3buddyLibPath && elements.rs3buddyLibStatus) {
+      if (config.rs3buddyLibPath) {
+        elements.rs3buddyLibPath.textContent = truncatePath(config.rs3buddyLibPath, 35);
+        elements.rs3buddyLibPath.title = config.rs3buddyLibPath;
+        elements.rs3buddyLibStatus.className = "setting-status found";
       } else {
-        elements.alt1glLibPath.textContent = "Not found";
-        elements.alt1glLibStatus.className = "setting-status not-found";
+        elements.rs3buddyLibPath.textContent = "Not found";
+        elements.rs3buddyLibStatus.className = "setting-status not-found";
       }
     }
     updateLaunchButtonState();
@@ -587,7 +587,7 @@
         const theme = btn.dataset.theme;
         if (theme) {
           document.body.setAttribute("data-theme", theme);
-          localStorage.setItem("alt1gl-theme", theme);
+          localStorage.setItem("rs3buddy-theme", theme);
         }
       });
     });
@@ -618,7 +618,7 @@
         elements.enableGlOverlay.checked = glOverlayEnabled;
     }).catch(() => {
       try {
-        const local = JSON.parse(localStorage.getItem("alt1gl-injection-settings") || "{}");
+        const local = JSON.parse(localStorage.getItem("rs3buddy-injection-settings") || "{}");
         glOverlayEnabled = local.enabled ?? false;
         if (elements.enableGlOverlay)
           elements.enableGlOverlay.checked = glOverlayEnabled;
@@ -628,7 +628,7 @@
     function saveGlOverlaySetting(enabled) {
       glOverlayEnabled = enabled;
       const settings = { enabled, overlay: enabled, glHooks: enabled, autoInject: enabled };
-      localStorage.setItem("alt1gl-injection-settings", JSON.stringify(settings));
+      localStorage.setItem("rs3buddy-injection-settings", JSON.stringify(settings));
       window.api.setInjectionSettings(settings);
       if (elements.enableGlOverlay)
         elements.enableGlOverlay.checked = enabled;
@@ -1385,7 +1385,7 @@
     }, 50);
   }
   function loadTheme() {
-    const savedTheme = localStorage.getItem("alt1gl-theme") || "dark";
+    const savedTheme = localStorage.getItem("rs3buddy-theme") || "dark";
     document.body.setAttribute("data-theme", savedTheme);
     elements.themeBtns.forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.theme === savedTheme);
