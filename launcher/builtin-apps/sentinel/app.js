@@ -18,11 +18,11 @@ const POST = (p, b) => api("POST", p, b);
 const DEL = (p) => api("DELETE", p);
 
 // ── Preset storage (launcher appWindowApi → %APPDATA%, else localStorage) ──
+// appWindowApi.read/writeAppData are STRING-based (launcher does fs.read/writeFileSync
+// utf-8), so JSON.stringify on write + JSON.parse on read; the try/catch self-heals
+// older "[object Object]" writes.
 const APP = "Sentinel";
 const hasAppData = !!(window.appWindowApi && window.appWindowApi.readAppData);
-// appWindowApi.read/writeAppData are STRING-based (launcher does fs.read/writeFileSync
-// utf-8), so JSON.stringify on write + JSON.parse on read. (Older builds wrote raw
-// objects → "[object Object]" on disk; the try/catch below self-heals that.)
 async function listPresetFiles() {
   if (hasAppData) {
     const idx = await window.appWindowApi.readAppData(APP, "index.json");
@@ -55,48 +55,75 @@ async function deletePresetFile(file) {
 }
 
 // ── Preset normalisation (AFK Warden format → evaluable alerters) ──
-const STAT = { hp:"hitpoints", hitpoints:"hitpoints", health:"hitpoints", pray:"prayer", prayer:"prayer", adren:"adrenaline", adrenaline:"adrenaline", summ:"summoning", summoning:"summoning" };
+const STAT = { hp:"hitpoints", hitpoints:"hitpoints", hitpoint:"hitpoints", health:"hitpoints", life:"hitpoints", constitution:"hitpoints",
+  pray:"prayer", prayer:"prayer",
+  adren:"adrenaline", adrenaline:"adrenaline", adrenalin:"adrenaline",
+  sum:"summoning", summ:"summoning", summon:"summoning", summoning:"summoning" };
 const norm = (s) => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+// Supported alerter types. AFK Warden also ships dialogtextsimple / craftmenu /
+// xpcounter / etc. — those need game-UI readers (dialog box, production menu, XP
+// counter) we don't expose, so they're collected in `skipped` and reported, not
+// silently dropped.
+const SUPPORTED = ["chat", "actionbar", "inactive"];
 function normalizePreset(raw) {
-  const out = []; let id = 0;
+  const out = []; const skipped = []; let id = 0;
   for (const a of (raw && raw.alerters) || []) {
     const type = norm(a.type || "chat");
-    if (!["chat","actionbar","inactive"].includes(type)) continue;
+    const nm = (a.name || "").trim();
+    if (!SUPPORTED.includes(type)) { if (nm) skipped.push({ name: nm, type }); continue; }
     const lines = a.lines || [];
     const okChat = type === "chat" && lines.length > 0;
     const okBar = type === "actionbar" && typeof a.treshold === "number" && !!a.stat;
     const okTimer = type === "inactive" && typeof a.delay === "number";
-    if (!okChat && !okBar && !okTimer) continue;
+    if (!okChat && !okBar && !okTimer) { if (nm) skipped.push({ name: nm, type }); continue; }
     const fire = [], reset = [];
     for (const l of lines) { if (l && l.text) (l.percent === 0 ? reset : fire).push(norm(l.text)); }
-    const al = { id: id++, name: (a.name || "").trim() || ("Alert " + id), type,
+    const al = { id: id++, name: nm || ("Alert " + id), type,
       tooltip: (a.tooltip || "").trim(), sound: (a.alarm && a.alarm.sound) || null,
+      audioData: (a.alarm && a.alarm.audioData) || null, audioMime: (a.alarm && a.alarm.audioMime) || null,
       dismiss: a.dismiss === "refocus" ? "refocus" : "timed", fireTexts: fire, resetTexts: reset };
     if (type === "actionbar") { al.stat = STAT[norm(a.stat)] || norm(a.stat); al.hl = a.higherlower === "higher" ? "higher" : "lower"; al.thresh = a.treshold; }
     else if (type === "inactive") al.delaySec = a.delay;
     out.push(al);
   }
-  return { name: (raw && raw.name) || "Preset", alerters: out };
+  return { name: (raw && raw.name) || "Preset", alerters: out, skipped };
 }
-function resolveSound(ref) {
-  if (!ref) return null;
-  if (/^(file|data|https?):/i.test(ref) || /^[a-z]:[\\/]/i.test(ref) || ref.startsWith("/")) return ref;
-  return "C:/Windows/Media/Alarm01.wav"; // upload:* and unknowns → default alarm
+// ── Audio: played IN-APP via Web Audio (this window is an Electron renderer).
+//    The launcher runs the engine as plain node with NO audio host, so POST
+//    /api/sound is silent there; Web Audio also dodges the window CSP + file://
+//    limits since it decodes raw bytes (no URL loaded). Embedded base64 and
+//    http(s) URLs decode to buffers; anything else (file path / upload:*) beeps. ──
+let _actx = null;
+function actx() { if (!_actx) _actx = new AudioContext(); if (_actx.state === "suspended") _actx.resume(); return _actx; }
+function beep() {
+  try {
+    const ctx = actx(); const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = "square"; o.frequency.value = 880; g.gain.value = 0.18; o.connect(g); g.connect(ctx.destination);
+    o.start(); g.gain.setTargetAtTime(0.0001, ctx.currentTime + 0.22, 0.05); o.stop(ctx.currentTime + 0.45);
+  } catch {}
 }
+function playBuffer(arrbuf) { try { actx().decodeAudioData(arrbuf, (buf) => { const ctx = actx(); const s = ctx.createBufferSource(); s.buffer = buf; s.connect(ctx.destination); s.start(); }, () => beep()); } catch { beep(); } }
+function playEmbedded(b64) { try { const bin = atob(b64); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); playBuffer(u8.buffer); } catch { beep(); } }
+async function playUrl(url) { try { const r = await fetch(url); playBuffer(await r.arrayBuffer()); } catch { beep(); } }
 
 // ── Runtime ──
-const TICK = 250, TOAST = 4500, RENAG = 2500, MAXT = 6, TIP_DX = 18, TIP_DY = 18;
+const TICK = 250, TOAST = 4500, RENAG = 2500, MAXT = 6;
 let running = false, paused = false, timer = null;
 let alerters = [], rt = new Map(), toasts = [], fires = 0, prevChat = [], lastActivity = 0;
-let curX = 0, curY = 0, curSeq = -1, lastChat = "(none)";
-let cursorTipActive = false, cursorTipSeq = -1, cursorTipSound = null, cursorTipAt = 0;
-// Desktop "tooltip on your mouse" is a NATIVE engine capability: POST /api/tooltip
-// {text} shows a click-through window pinned to the OS cursor anywhere on screen;
-// DELETE /api/tooltip hides it. Works for any SDK consumer, not just the launcher.
-let lastDrawKey = "", activeName = null, activeFile = null;
+let curSeq = -1, lastChat = "(none)";
+let cursorTipActive = false, cursorTipSeq = -1, cursorTipAlerter = null, cursorTipAt = 0;
+let lastDrawKey = "", activeName = null, activeFile = null, collapsed = true, skippedAlerters = [];
+// "Tooltip on your mouse" is a NATIVE engine capability (POST /api/tooltip): a
+// click-through window pinned to the OS cursor anywhere on screen.
 
 function logln(s) { const el = document.getElementById("log"); el.textContent += s + "\n"; el.scrollTop = el.scrollHeight; }
-const hit = (line, needles) => needles.some((n) => n && line.includes(n));
+// Match-time normalisation: lower-case, drop punctuation, and collapse the RS-font
+// look-alikes i/l/1 — AFK Warden presets are full of l↔i OCR typos ("Butterfiy",
+// "famiiiar", "successfuliy") that our cleaner reader spells correctly, so an exact
+// substring match would never fire. Collapsing them bridges both spellings.
+const matchNorm = (s) => (s == null ? "" : String(s)).toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/[il1]/g, "l").replace(/\s+/g, " ").trim();
+const hit = (line, needles) => { const L = matchNorm(line); return needles.some((n) => { const m = matchNorm(n); return m && L.includes(m); }); };
+const esc = (s) => (s == null ? "" : String(s)).replace(/[\r\n]+/g, " ");
 // Lines NEW this tick (multiset diff vs last tick) — process each chat message
 // once, on the tick it appears. Robust to NXT fade garbling: a clean capture of a
 // message is a distinct (new) text, so it still registers as fresh and matches.
@@ -115,21 +142,29 @@ function pickColor(a) {
 }
 
 async function loadAlerters(boss) {
-  const g = await readPreset("globals.json"); const gl = g ? normalizePreset(g).alerters : [];
-  const bl = boss ? normalizePreset(boss).alerters : [];
-  alerters = [...gl, ...bl].map((a, i) => ({ ...a, id: i }));
+  const g = await readPreset("globals.json"); const gp = g ? normalizePreset(g) : { alerters: [], skipped: [] };
+  const bp = boss ? normalizePreset(boss) : { alerters: [], skipped: [] };
+  alerters = [...gp.alerters, ...bp.alerters].map((a, i) => ({ ...a, id: i, enabled: true }));
+  skippedAlerters = bp.skipped.concat(gp.skipped);
   rt = new Map(alerters.map((a) => [a.id, { active:false, firedAt:0 }]));
   toasts = []; prevChat = []; lastActivity = Date.now();
 }
 
+function playSound(a) {
+  if (a && a.audioData) return playEmbedded(a.audioData);   // embedded → travels with the preset
+  const ref = a && a.sound;
+  if (ref && /^https?:/i.test(ref)) return playUrl(ref);    // hosted URL
+  beep();                                                   // file path / upload:* / none → default beep
+}
+
 function fire(a, now) {
   fires++;
-  const f = resolveSound(a.sound); if (f) POST("/api/sound", { file:f, volume:1 });
+  playSound(a);
   if (a.dismiss === "refocus") {
-    // Desktop tooltip pinned to the real mouse anywhere on screen; the launcher
-    // follows the global cursor, and we hide it when the mouse returns to RS.
+    // Desktop tooltip pinned to the real mouse anywhere on screen; cleared when
+    // the mouse returns to the RS client (seq bump).
     const tip = a.tooltip || a.name;
-    cursorTipActive = true; cursorTipSeq = curSeq; cursorTipSound = a.sound; cursorTipAt = now;
+    cursorTipActive = true; cursorTipSeq = curSeq; cursorTipAlerter = a; cursorTipAt = now;
     POST("/api/tooltip", { text: tip });
     logln("▸ FIRE: " + a.name + " — tooltip follows your mouse until you return to the game");
   } else {
@@ -142,9 +177,22 @@ function fire(a, now) {
 async function tick() {
   try {
     const now = Date.now();
-    // input first (mouse pos + seq) — drives tooltip placement + refocus dismiss
+    // input first (mouse seq) — drives the refocus tooltip dismiss
     const input = await GET("/api/input");
-    if (input) { if (input.x != null) curX = input.x; if (input.y != null) curY = input.y; if (input.seq != null) curSeq = input.seq; }
+    if (input && input.seq != null) curSeq = input.seq;
+
+    // in-game panel interaction: collapse the header / toggle an alert on|off.
+    // The engine hit-tests; we drain the click events here. Works while paused.
+    const uev = await GET("/api/ui/events");
+    for (const e of (uev && uev.events) || []) {
+      if (e.type === "close") { collapsed = true; continue; }
+      if (e.type !== "click" || !e.id) continue;
+      if (e.id === "hdr") collapsed = !collapsed;
+      else if (e.id.indexOf("toggle:") === 0) {
+        const a = alerters[+e.id.slice(7)];
+        if (a) { a.enabled = !a.enabled; const st = rt.get(a.id); if (st) st.active = false; logln((a.enabled ? "● enabled " : "○ muted ") + a.name); }
+      }
+    }
 
     if (!paused && alerters.length) {
       // ── chat: scan EVERY newly-appeared line (not just the newest) so a clean
@@ -160,21 +208,20 @@ async function tick() {
       for (const t of fresh) {
         logln("chat: " + t);
         for (const a of alerters) {
-          if (a.type === "chat" && a.fireTexts.length && hit(t, a.fireTexts)) fire(a, now);
+          if (a.type === "chat" && a.enabled && a.fireTexts.length && hit(t, a.fireTexts)) fire(a, now);
         }
       }
       // ── bars + timers (evaluated every tick) ──
-      const needBars = alerters.some((a) => a.type === "actionbar");
+      const needBars = alerters.some((a) => a.type === "actionbar" && a.enabled);
       const bars = needBars ? await GET("/api/bars") : null;
       for (const a of alerters) {
         const st = rt.get(a.id); if (!st) continue;
+        if (!a.enabled) { st.active = false; continue; }
         if (a.type === "actionbar") {
           const bar = bars && bars.bars && bars.bars.find((b) => b.name === a.stat && b.found);
           if (bar && bar.value != null && bar.max) { const pct = bar.value / bar.max * 100; const inz = a.hl === "higher" ? pct >= a.thresh : pct <= a.thresh; if (inz && !st.active) { fire(a, now); st.active = true; st.firedAt = now; } if (!inz) st.active = false; }
         } else if (a.type === "inactive") {
           if (now - lastActivity >= a.delaySec * 1000) { if (!st.active) { fire(a, now); st.active = true; } } else st.active = false;
-        } else if (a.type === "chat" && a.dismiss !== "refocus" && a.resetTexts.length === 0 && st.active && now - st.firedAt > TOAST) {
-          st.active = false; // timed chat w/o a reset line re-arms after the banner window
         }
       }
       // ── desktop cursor tooltip: clear when the mouse returns to the game ──
@@ -182,44 +229,68 @@ async function tick() {
       // since the tooltip fired means the user is back on the client.
       if (cursorTipActive) {
         if (curSeq !== cursorTipSeq) { DEL("/api/tooltip"); cursorTipActive = false; logln("✓ refocus — tooltip cleared"); }
-        else if (now - cursorTipAt > RENAG) { const f = resolveSound(cursorTipSound); if (f) POST("/api/sound", { file:f, volume:1 }); cursorTipAt = now; }
+        else if (now - cursorTipAt > RENAG) { playSound(cursorTipAlerter); cursorTipAt = now; }
       }
     }
 
     toasts = toasts.filter((t) => t.until > Date.now());
-    await renderDraw();
+    await renderUI();
     refreshStatus();
   } catch (e) { logln("tick error: " + (e && e.message)); }
 }
 
-// ── In-game overlay (draw layer; control lives in this window, display in-game) ──
-function safe(s) { return (s || "").replace(/[\r\n]+/g, " "); }
-function billboard(x, y, text, color, bg, fontSize) {
-  return { kind:"billboard", anchor:{ mode:"screen", screen:{ x, y } }, text:safe(text),
-    color, background:bg, padding:8, halign:"left", valign:"top", fontSize, group:"sentinel" };
-}
-async function renderDraw() {
+// ── In-game overlay: interactive UI layer. The engine hit-tests clicks; we poll
+//    GET /api/ui/events (drained in tick). One panel: a collapsible header + a row
+//    per loaded alert (name + on/off toggle) + active fire banners. Interactive
+//    rows consume the click so it doesn't reach the game. Re-POSTed only on change.
+async function renderUI() {
   if (!running) return;
-  const items = [];
-  items.push(billboard(10, 10, `Sentinel: ${activeName || "globals"} (${paused ? "paused" : "on"})`, "#ffffff", "#000000cc", 13));
-  let by = 42;
-  for (const t of toasts) { items.push(billboard(10, by, t.name + (t.tip ? "  —  " + t.tip : ""), "#ffffff", t.color + "ee", 16)); by += 34; }
-  const key = JSON.stringify(items);
+  const on = alerters.filter((a) => a.enabled).length, off = alerters.length - on;
+  // Header bar: the title is the DRAG HANDLE (drag to move the panel — the engine
+  // remembers the dragged origin across re-renders); the ▸/▾ on the right is a
+  // separate clickable target for collapse, so a drag never toggles collapse.
+  const kids = [{
+    type: "row",
+    props: { draggable: true, justify: "between", align: "center", gap: 12, pad: [5, 9], radius: 6, bg: paused ? "#5a3a00d8" : "#000000cc" },
+    children: [
+      { type: "label", props: { draggable: true, fontSize: 14, color: "#fff",
+        text: `Sentinel · ${esc(activeName || "globals")} — ${on} on${off ? ` / ${off} off` : ""}` }, children: [] },
+      { type: "button", props: { id: "hdr", clickable: true, variant: "plain", icon: collapsed ? "caretRight" : "caretDown", iconSize: 16, color: "#fff", width: 30, height: 24, radius: 5 }, children: [] },
+    ],
+  }];
+  if (!collapsed) {
+    alerters.forEach((a, i) => kids.push({
+      type: "row",
+      props: { id: `toggle:${i}`, clickable: true, justify: "between", gap: 12, pad: [3, 7], radius: 5, bg: a.enabled ? "#14351bdd" : "#262626dd" },
+      children: [
+        { type: "label", props: { text: esc(a.name), fontSize: 13, color: a.enabled ? "#e8e8e8" : "#8a8a8a" }, children: [] },
+        { type: "label", props: { text: a.enabled ? "● ON" : "○ off", fontSize: 12, color: a.enabled ? "#3ad15a" : "#777" }, children: [] },
+      ],
+    }));
+    if (!alerters.length) kids.push({ type: "label", props: { text: "(no alerts loaded)", fontSize: 12, color: "#999", pad: [2, 7] }, children: [] });
+  }
+  for (const t of toasts) kids.push({ type: "label", props: { text: esc(t.name + (t.tip ? " — " + t.tip : "")), fontSize: 15, color: "#fff", bg: (t.color || "#d98a1f") + "ee", pad: [6, 9], radius: 6 }, children: [] });
+  const tree = { type: "panel", props: { anchor: "top-left", pad: 8, gap: 5, bg: "#0c0c0cb3", radius: 10, color: "#fff" }, children: kids };
+  const key = JSON.stringify(tree);
   if (key === lastDrawKey) return; lastDrawKey = key;
-  await POST("/api/draw/scene", items);
+  await POST("/api/ui", tree);
 }
 
 async function start() { if (timer) return; running = true; paused = false; lastActivity = Date.now(); timer = setInterval(tick, TICK); logln("started"); refreshStatus(); }
 function pause() { paused = !paused; logln(paused ? "paused" : "resumed"); refreshStatus(); }
-async function stop() { if (timer) clearInterval(timer); timer = null; running = false; paused = false; toasts = []; lastDrawKey = ""; DEL("/api/tooltip"); cursorTipActive = false; await DEL("/api/draw?group=sentinel"); await DEL("/api/draw"); logln("stopped"); refreshStatus(); }
+async function stop() { if (timer) clearInterval(timer); timer = null; running = false; paused = false; toasts = []; lastDrawKey = ""; DEL("/api/tooltip"); cursorTipActive = false; await DEL("/api/ui"); DEL("/api/draw?group=sentinel"); logln("stopped"); refreshStatus(); }
 
 function refreshStatus() {
   const pill = document.getElementById("runpill");
   pill.textContent = !running ? "stopped" : (paused ? "paused" : "running");
   pill.className = "pill " + (!running ? "" : (paused ? "pause" : "run"));
   document.getElementById("statline").textContent =
-    (activeName ? `Preset: ${activeName}` : "Global alerts only") + ` · ${alerters.length} alerts · ${fires} fired · newest chat: ${lastChat}`;
+    (activeName ? `Preset: ${activeName}` : "Global alerts only") + ` · ${alerters.length} alerts${skippedAlerters.length ? ` (${skippedAlerters.length} skipped)` : ""} · ${fires} fired · newest chat: ${lastChat}`;
 }
+
+// ── JSON textarea (programmatic set → also refresh the Sounds list) ──
+function setJson(obj) { document.getElementById("json").value = JSON.stringify(obj, null, 2); renderSounds(); }
+function currentJson() { try { return JSON.parse(document.getElementById("json").value); } catch (e) { alert("Invalid JSON: " + e.message); return null; } }
 
 // ── Preset list + load ──
 async function refreshPresetList() {
@@ -232,12 +303,13 @@ async function loadSelected() {
   const boss = file ? await readPreset(file) : null;
   activeFile = file || null; activeName = boss ? (boss.name || file) : "Global alerts";
   await loadAlerters(boss);
-  document.getElementById("json").value = JSON.stringify(boss || { name:"New preset", baseName:"", alerters:[] }, null, 2);
+  setJson(boss || { name:"New preset", baseName:"", alerters:[] });
   document.getElementById("saveName").value = file || "";
   if (!running) await start();
-  logln(`loaded ${activeName} (${alerters.length} alerts)`); refreshStatus();
+  logln(`loaded ${activeName} (${alerters.length} alerts)`);
+  if (skippedAlerters.length) logln("⚠ " + skippedAlerters.length + " unsupported alert(s) skipped: " + skippedAlerters.map((s) => `${s.name} [${s.type}]`).join(", "));
+  refreshStatus();
 }
-function currentJson() { try { return JSON.parse(document.getElementById("json").value); } catch (e) { alert("Invalid JSON: " + e.message); return null; } }
 
 document.getElementById("loadBtn").onclick = loadSelected;
 document.getElementById("startBtn").onclick = () => start();
@@ -254,11 +326,11 @@ document.getElementById("aType").onchange = (e) => {
 document.getElementById("addBtn").onclick = () => {
   const j = currentJson(); if (!j) return; if (!Array.isArray(j.alerters)) j.alerters = [];
   const type = document.getElementById("aType").value;
-  const a = { name: document.getElementById("aName").value || "Alert", type, tooltip: "", alarm: { sound: document.getElementById("aSound").value || null, repeat: false }, dismiss: document.getElementById("aDismiss").value };
+  const a = { name: document.getElementById("aName").value || "Alert", type, tooltip: document.getElementById("aTip").value.trim(), alarm: { sound: document.getElementById("aSound").value || null, repeat: false }, dismiss: document.getElementById("aDismiss").value };
   if (type === "chat") { a.lines = []; const f = document.getElementById("aFire").value.trim(); const r = document.getElementById("aReset").value.trim(); if (f) a.lines.push({ text:f, percent:100 }); if (r) a.lines.push({ text:r, percent:0 }); }
   else if (type === "actionbar") { a.stat = document.getElementById("aStat").value; a.higherlower = document.getElementById("aHL").value; a.treshold = Number(document.getElementById("aThresh").value); }
   else { a.delay = Number(document.getElementById("aDelay").value); }
-  j.alerters.push(a); document.getElementById("json").value = JSON.stringify(j, null, 2); logln("added alert: " + a.name);
+  j.alerters.push(a); setJson(j); logln("added alert: " + a.name);
 };
 
 document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
@@ -268,13 +340,66 @@ document.getElementById("importFile").onchange = async (e) => {
   const file = f.name.toLowerCase().endsWith(".json") ? f.name : f.name + ".json";
   await writePreset(file, obj); await refreshPresetList(); document.getElementById("presetSel").value = file; logln("imported " + file);
 };
-document.getElementById("newBtn").onclick = () => { document.getElementById("json").value = JSON.stringify({ name:"New preset", baseName:"", alerters:[] }, null, 2); document.getElementById("saveName").value = ""; };
+document.getElementById("newBtn").onclick = () => { setJson({ name:"New preset", baseName:"", alerters:[] }); document.getElementById("saveName").value = ""; };
 document.getElementById("dupBtn").onclick = () => { document.getElementById("saveName").value = ""; logln("edit the JSON + save under a new name"); };
 document.getElementById("delBtn").onclick = async () => { const file = document.getElementById("presetSel").value; if (!file) return; if (!confirm("Delete " + file + "?")) return; await deletePresetFile(file); await refreshPresetList(); logln("deleted " + file); };
 document.getElementById("saveBtn").onclick = async () => {
   const j = currentJson(); if (!j) return; let name = document.getElementById("saveName").value.trim(); if (!name) { alert("Enter a file name"); return; }
   if (!name.toLowerCase().endsWith(".json")) name += ".json";
   await writePreset(name, j); await refreshPresetList(); document.getElementById("presetSel").value = name; logln("saved " + name);
+};
+
+// ── Sounds: attach audio per alert so it travels INSIDE the shared preset ──
+let _attachIdx = -1;
+const escHtml = (s) => (s == null ? "" : String(s)).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const b64kb = (s) => Math.round((s.length * 0.75) / 1024);
+function fileToBase64(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => { const s = String(r.result); res(s.slice(s.indexOf(",") + 1)); }; r.onerror = rej; r.readAsDataURL(f); }); }
+function renderSounds() {
+  const host = document.getElementById("soundsList"); if (!host) return;
+  let j; try { j = JSON.parse(document.getElementById("json").value); } catch { host.innerHTML = '<p class="muted">Fix the preset JSON to manage sounds.</p>'; return; }
+  const al = (j && j.alerters) || [];
+  if (!al.length) { host.innerHTML = '<p class="muted">No alerts in this preset yet.</p>'; return; }
+  host.innerHTML = "";
+  al.forEach((a, i) => {
+    const am = a.alarm || {}; const has = !!am.audioData;
+    const status = has ? `embedded ✓ (${b64kb(am.audioData)} KB)` : (am.sound ? escHtml(am.sound) : "default alarm");
+    const row = document.createElement("div"); row.className = "row sb sndrow";
+    const left = document.createElement("div"); left.style.cssText = "display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;";
+    const nameEl = document.createElement("span"); nameEl.style.fontWeight = "600"; nameEl.textContent = a.name || "Alert " + (i + 1); left.appendChild(nameEl);
+    const tip = document.createElement("input"); tip.type = "text"; tip.placeholder = "tooltip / message shown when it fires…"; tip.value = a.tooltip || "";
+    tip.style.cssText = "width:280px;max-width:60vw;font-size:12px;padding:3px 6px;";
+    tip.onchange = () => { a.tooltip = tip.value.trim(); commitSounds(j); };
+    left.appendChild(tip);
+    const st = document.createElement("span"); st.className = "muted"; st.style.fontSize = "12px"; st.textContent = "sound: " + status; left.appendChild(st);
+    const btns = document.createElement("div"); btns.className = "row";
+    const att = document.createElement("button"); att.textContent = has ? "Replace…" : "Attach…"; att.onclick = () => { _attachIdx = i; document.getElementById("soundFile").click(); };
+    btns.appendChild(att);
+    if (has) {
+      const prev = document.createElement("button"); prev.textContent = "▶"; prev.title = "Preview sound"; prev.onclick = () => playEmbedded(am.audioData); btns.appendChild(prev);
+      const clr = document.createElement("button"); clr.textContent = "✕"; clr.title = "Remove embedded sound"; clr.className = "warn"; clr.onclick = () => { delete a.alarm.audioData; delete a.alarm.audioMime; commitSounds(j); }; btns.appendChild(clr);
+    }
+    row.appendChild(left); row.appendChild(btns); host.appendChild(row);
+  });
+}
+async function commitSounds(j) {
+  document.getElementById("json").value = JSON.stringify(j, null, 2);
+  renderSounds();
+  const name = document.getElementById("saveName").value.trim();
+  if (name) {
+    const file = name.toLowerCase().endsWith(".json") ? name : name + ".json";
+    await writePreset(file, j); await refreshPresetList(); document.getElementById("presetSel").value = file;
+    if (file === activeFile) { await loadAlerters(await readPreset(file)); refreshStatus(); } // make new sounds live
+  }
+}
+document.getElementById("soundFile").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f || _attachIdx < 0) return;
+  if (f.size > 3 * 1024 * 1024 && !confirm(`${f.name} is ${(f.size / 1048576).toFixed(1)} MB — embedding it makes the preset that much bigger to share. Continue?`)) return;
+  let j; try { j = JSON.parse(document.getElementById("json").value); } catch { alert("Fix the preset JSON first."); return; }
+  if (!j.alerters || !j.alerters[_attachIdx]) return;
+  const b64 = await fileToBase64(f);
+  const a = j.alerters[_attachIdx];
+  a.alarm = Object.assign({}, a.alarm, { sound: f.name, audioData: b64, audioMime: f.type || "audio/wav" });
+  commitSounds(j); logln("attached " + f.name + " → " + (a.name || "alert " + (_attachIdx + 1)));
 };
 
 // ── Connection poll + seed ──
@@ -294,8 +419,11 @@ setInterval(async () => {
 
 (async () => {
   await seedGlobals(); await refreshPresetList();
-  document.getElementById("json").value = JSON.stringify({ name:"New preset", baseName:"", alerters:[] }, null, 2);
+  setJson({ name:"New preset", baseName:"", alerters:[] });
+  let sndDebounce;
+  document.getElementById("json").addEventListener("input", () => { clearTimeout(sndDebounce); sndDebounce = setTimeout(renderSounds, 200); });
   await loadAlerters(null); // globals active even before a boss preset is chosen
+  DEL("/api/draw?group=sentinel"); // clear stale billboards from the earlier draw-layer build
   await start();            // begin monitoring immediately (polls input + shows status in-game)
   logln("Sentinel ready (" + (hasAppData ? "appData" : "localStorage") + "). Monitoring globals (stunned). Load a boss preset to add its alerts.");
 })();

@@ -79,11 +79,20 @@
     <div id="fTimer" class="hide">
       <label>Fire after N seconds idle</label><input type="number" id="aDelay" value="270" min="1" />
     </div>
+    <div style="margin-top:6px;"><label>Tooltip / message (any text — shown when the alert fires)</label><input type="text" id="aTip" placeholder="e.g. Drink an overload!" /></div>
     <div class="grid2" style="margin-top:6px;">
       <div><label>Dismiss</label><select id="aDismiss"><option value="timed">timed (auto-hide)</option><option value="refocus">tooltip on mouse until refocus</option></select></div>
       <div><label>Sound file (optional)</label><input type="text" id="aSound" placeholder="C:/Windows/Media/Alarm01.wav" /></div>
     </div>
     <div class="row" style="margin-top:10px;"><button id="addBtn" class="primary">Add to preset</button></div>
+  </div>
+
+  <!-- Per-alert sounds & tooltips -->
+  <div class="card">
+    <h2>Alert sounds &amp; tooltips</h2>
+    <p class="muted" style="margin:0 0 8px;">Per alert: edit its <b>tooltip</b> (the message shown when it fires — any text you like) and attach a <b>sound</b>. Sounds embed <b>inside the preset</b> (base64), so sharing the preset shares them. Imported AFK Warden presets use cloud sounds we can't fetch — attach your own here.</p>
+    <input type="file" id="soundFile" accept="audio/*" class="hide" />
+    <div id="soundsList"><p class="muted">Load or build a preset to edit its alerts.</p></div>
   </div>
 
   <!-- Raw editor -->
