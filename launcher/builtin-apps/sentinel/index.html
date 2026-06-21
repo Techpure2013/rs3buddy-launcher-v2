@@ -90,8 +90,9 @@
   <!-- Per-alert sounds & tooltips -->
   <div class="card">
     <h2>Alert sounds &amp; tooltips</h2>
-    <p class="muted" style="margin:0 0 8px;">Per alert: edit its <b>tooltip</b> (the message shown when it fires — any text you like) and attach a <b>sound</b>. Sounds embed <b>inside the preset</b> (base64), so sharing the preset shares them. Imported AFK Warden presets use cloud sounds we can't fetch — attach your own here.</p>
+    <p class="muted" style="margin:0 0 8px;">Per alert: set its <b>tooltip</b> — either <b>text</b> or an <b>image</b> that follows your cursor (one or the other, not both) — and attach a <b>sound</b>. Sounds and images embed <b>inside the preset</b> (base64), so sharing the preset shares them. Imported AFK Warden presets use cloud sounds we can't fetch — attach your own here.</p>
     <input type="file" id="soundFile" accept="audio/*" class="hide" />
+    <input type="file" id="imageFile" accept="image/*" class="hide" />
     <div id="soundsList"><p class="muted">Load or build a preset to edit its alerts.</p></div>
   </div>
 

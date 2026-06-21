@@ -81,6 +81,7 @@ function normalizePreset(raw) {
     const al = { id: id++, name: nm || ("Alert " + id), type,
       tooltip: (a.tooltip || "").trim(), sound: (a.alarm && a.alarm.sound) || null,
       audioData: (a.alarm && a.alarm.audioData) || null, audioMime: (a.alarm && a.alarm.audioMime) || null,
+      tooltipImage: a.tooltipImage || null, tooltipImageMime: a.tooltipImageMime || null,
       dismiss: a.dismiss === "refocus" ? "refocus" : "timed", fireTexts: fire, resetTexts: reset };
     if (type === "actionbar") { al.stat = STAT[norm(a.stat)] || norm(a.stat); al.hl = a.higherlower === "higher" ? "higher" : "lower"; al.thresh = a.treshold; }
     else if (type === "inactive") al.delaySec = a.delay;
@@ -163,9 +164,10 @@ function fire(a, now) {
   if (a.dismiss === "refocus") {
     // Desktop tooltip pinned to the real mouse anywhere on screen; cleared when
     // the mouse returns to the RS client (seq bump).
-    const tip = a.tooltip || a.name;
     cursorTipActive = true; cursorTipSeq = curSeq; cursorTipAlerter = a; cursorTipAt = now;
-    POST("/api/tooltip", { text: tip });
+    // exclusive: an image tooltip if one is attached, else the text pill
+    if (a.tooltipImage) POST("/api/tooltip", { image: a.tooltipImage });
+    else POST("/api/tooltip", { text: a.tooltip || a.name });
     logln("▸ FIRE: " + a.name + " — tooltip follows your mouse until you return to the game");
   } else {
     toasts.push({ name:a.name, tip:a.tooltip, color:pickColor(a), until: now + TOAST });
@@ -366,10 +368,21 @@ function renderSounds() {
     const row = document.createElement("div"); row.className = "row sb sndrow";
     const left = document.createElement("div"); left.style.cssText = "display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;";
     const nameEl = document.createElement("span"); nameEl.style.fontWeight = "600"; nameEl.textContent = a.name || "Alert " + (i + 1); left.appendChild(nameEl);
-    const tip = document.createElement("input"); tip.type = "text"; tip.placeholder = "tooltip / message shown when it fires…"; tip.value = a.tooltip || "";
-    tip.style.cssText = "width:280px;max-width:60vw;font-size:12px;padding:3px 6px;";
-    tip.onchange = () => { a.tooltip = tip.value.trim(); commitSounds(j); };
-    left.appendChild(tip);
+    // tooltip: an IMAGE or TEXT — mutually exclusive (one replaces the other)
+    const tipRow = document.createElement("div"); tipRow.className = "row"; tipRow.style.cssText = "gap:6px;align-items:center;";
+    if (a.tooltipImage) {
+      const img = document.createElement("img"); img.src = `data:${a.tooltipImageMime || "image/png"};base64,${a.tooltipImage}`;
+      img.style.cssText = "height:34px;max-width:140px;border-radius:4px;background:#00000033;"; tipRow.appendChild(img);
+      const lbl = document.createElement("span"); lbl.className = "muted"; lbl.style.fontSize = "12px"; lbl.textContent = "tooltip = image"; tipRow.appendChild(lbl);
+      const rm = document.createElement("button"); rm.textContent = "Remove image"; rm.onclick = () => { delete a.tooltipImage; delete a.tooltipImageMime; commitSounds(j); }; tipRow.appendChild(rm);
+    } else {
+      const tip = document.createElement("input"); tip.type = "text"; tip.placeholder = "tooltip text shown when it fires…"; tip.value = a.tooltip || "";
+      tip.style.cssText = "width:230px;max-width:48vw;font-size:12px;padding:3px 6px;";
+      tip.onchange = () => { a.tooltip = tip.value.trim(); commitSounds(j); };
+      tipRow.appendChild(tip);
+      const useImg = document.createElement("button"); useImg.textContent = "Use image…"; useImg.title = "Show an image on the cursor instead of text"; useImg.onclick = () => { _imgIdx = i; document.getElementById("imageFile").click(); }; tipRow.appendChild(useImg);
+    }
+    left.appendChild(tipRow);
     const st = document.createElement("span"); st.className = "muted"; st.style.fontSize = "12px"; st.textContent = "sound: " + status; left.appendChild(st);
     const btns = document.createElement("div"); btns.className = "row";
     const att = document.createElement("button"); att.textContent = has ? "Replace…" : "Attach…"; att.onclick = () => { _attachIdx = i; document.getElementById("soundFile").click(); };
@@ -400,6 +413,20 @@ document.getElementById("soundFile").onchange = async (e) => {
   const a = j.alerters[_attachIdx];
   a.alarm = Object.assign({}, a.alarm, { sound: f.name, audioData: b64, audioMime: f.type || "audio/wav" });
   commitSounds(j); logln("attached " + f.name + " → " + (a.name || "alert " + (_attachIdx + 1)));
+};
+
+// Attach a tooltip IMAGE to an alert (exclusive with the text tooltip).
+let _imgIdx = -1;
+document.getElementById("imageFile").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f || _imgIdx < 0) return;
+  if (f.size > 2 * 1024 * 1024 && !confirm(`${f.name} is ${(f.size / 1048576).toFixed(1)} MB — large images bloat the preset to share. Continue?`)) return;
+  let j; try { j = JSON.parse(document.getElementById("json").value); } catch { alert("Fix the preset JSON first."); return; }
+  if (!j.alerters || !j.alerters[_imgIdx]) return;
+  const b64 = await fileToBase64(f);
+  const a = j.alerters[_imgIdx];
+  a.tooltipImage = b64; a.tooltipImageMime = f.type || "image/png";
+  delete a.tooltip; // EXCLUSIVE — the image replaces the text tooltip
+  commitSounds(j); logln("tooltip image set on " + (a.name || "alert " + (_imgIdx + 1)));
 };
 
 // ── Connection poll + seed ──
